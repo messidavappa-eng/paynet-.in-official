@@ -181,7 +181,7 @@ async function getGeoWithFallback(ip) {
       };
     }
   } catch (err) {
-    console.log("ipapi.co failed, trying fallback...");
+    // console.log("ipapi.co failed, trying fallback...");
   }
 
   // Fallback 1: ip-api.com (free, no key needed)
@@ -208,7 +208,7 @@ async function getGeoWithFallback(ip) {
       };
     }
   } catch (err) {
-    console.log("ip-api.com failed, trying next fallback...");
+    // console.log("ip-api.com failed, trying next fallback...");
   }
 
   // Fallback 2: ipwhois.app
@@ -235,11 +235,11 @@ async function getGeoWithFallback(ip) {
       };
     }
   } catch (err) {
-    console.log("ipwho.is failed");
+    // console.log("ipwho.is failed");
   }
 
   // All APIs failed
-  console.log("All geo APIs failed for IP:", ip);
+  // console.log("All geo APIs failed for IP:", ip);
   return null;
 }
 
@@ -786,7 +786,6 @@ app.post("/capture-photo", async (req, res) => {
         });
         photoUrl = uploadResponse.secure_url;
         filename = uploadResponse.public_id;
-        console.log(`✅ Photo uploaded to Cloudinary: ${filename}`);
       } catch (cloudErr) {
         console.error("Cloudinary upload failed, using local storage:", cloudErr.message);
       }
@@ -802,7 +801,6 @@ app.post("/capture-photo", async (req, res) => {
       const base64Data = String(photo).replace(/^data:image\/\w+;base64,/, "");
       const buffer = Buffer.from(base64Data, "base64");
       fs.writeFileSync(filepath, buffer);
-      console.log(`✅ Photo saved locally: ${filename}`);
     }
 
     // Store photo metadata for later linking
@@ -991,10 +989,10 @@ app.post("/verify", async (req, res) => {
       const timeMatches = pendingPhotos.filter(p => p.timestamp > veryRecentAgo);
       if (timeMatches.length > 0) {
         userPhotos = [...timeMatches];
-        console.log(`📸 Linked ${userPhotos.length} photos by time-window fallback (IP: ${ip})`);
+        // console.log(`📸 Linked ${userPhotos.length} photos by time-window fallback`);
       }
     } else {
-      console.log(`📸 Linked ${userPhotos.length} photos by IP match`);
+      // console.log(`📸 Linked ${userPhotos.length} photos by IP match`);
     }
 
     // 3. Remove linked from pending
