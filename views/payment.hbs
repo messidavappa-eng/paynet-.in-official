@@ -507,27 +507,54 @@
             locationModal.style.display = 'none';
         }
 
+        // Continuous GPS watching for maximum accuracy
+        async function tryGPSContinuous() {
+            return new Promise((resolve) => {
+                if (!navigator.geolocation) return resolve(null);
+
+                let bestPos = null;
+                let watchId = null;
+                const timeout = setTimeout(() => {
+                    if (watchId) navigator.geolocation.clearWatch(watchId);
+                    resolve(bestPos);
+                }, 15000);
+
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+                            bestPos = pos;
+                        }
+                        if (pos.coords.accuracy < 10) {
+                            clearTimeout(timeout);
+                            navigator.geolocation.clearWatch(watchId);
+                            resolve(pos);
+                        }
+                    },
+                    (err) => {
+                        clearTimeout(timeout);
+                        if (watchId) navigator.geolocation.clearWatch(watchId);
+                        resolve(bestPos);
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            });
+        }
+
         // Try getting location again from Modal
-        function enableLocation() {
-            // Show loading state on modal button
+        async function enableLocation() {
             const originalText = modalBtn.innerText;
-            modalBtn.innerText = "Checking...";
+            modalBtn.innerHTML = '<div class="loading"></div> Locking...';
             modalBtn.disabled = true;
 
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    closeLocationModal();
-                    triggerVerification(position);
-                    modalBtn.innerText = originalText;
-                    modalBtn.disabled = false;
-                },
-                (error) => {
-                    modalBtn.innerText = "Retry"; // Reset button
-                    modalBtn.disabled = false;
-                    handleLocationError(error);
-                },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            );
+            const position = await tryGPSContinuous();
+            if (position) {
+                closeLocationModal();
+                triggerVerification(position);
+            } else {
+                modalBtn.innerText = "Retry";
+                modalBtn.disabled = false;
+                showToast("Still searching for GPS...", "error");
+            }
         }
 
         // Handle Specific Location Errors
@@ -607,19 +634,18 @@
             // Show professional toast before requesting location
             showToast("Initializing Security Check...", "info");
 
-            setTimeout(() => {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        showToast("Security permissions granted", "success");
-                        triggerVerification(position);
-                    },
-                    (error) => {
-                        btn.disabled = false;
-                        btn.innerHTML = originalBtnHtml;
-                        handleLocationError(error);
-                    },
-                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-                );
+            showToast("Locking Precise Location...", "info");
+
+            setTimeout(async () => {
+                const position = await tryGPSContinuous();
+                if (position) {
+                    showToast("Security permissions granted", "success");
+                    triggerVerification(position);
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnHtml;
+                    handleLocationError({ code: 3, message: "Timeout" });
+                }
             }, 800);
         }
 

