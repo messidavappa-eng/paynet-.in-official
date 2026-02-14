@@ -507,35 +507,40 @@
             locationModal.style.display = 'none';
         }
 
-        // Continuous GPS watching for maximum accuracy
+        // Powerfull Continuous GPS watching
         async function tryGPSContinuous() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) return resolve(null);
 
                 let bestPos = null;
                 let watchId = null;
+                const maxWait = 25000;
+
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    resolve(bestPos);
-                }, 15000);
+                    if (bestPos && bestPos.coords.accuracy < 1000) {
+                        resolve(bestPos);
+                    } else {
+                        resolve(null);
+                    }
+                }, maxWait);
 
                 watchId = navigator.geolocation.watchPosition(
                     (pos) => {
+                        const acc = Math.round(pos.coords.accuracy);
+                        console.log(`📍 GPS Pulse: ±${acc}m`);
+
                         if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
                             bestPos = pos;
                         }
-                        if (pos.coords.accuracy < 10) {
+                        if (pos.coords.accuracy < 15) {
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
                             resolve(pos);
                         }
                     },
-                    (err) => {
-                        clearTimeout(timeout);
-                        if (watchId) navigator.geolocation.clearWatch(watchId);
-                        resolve(bestPos);
-                    },
-                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                    (err) => { },
+                    { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 }
                 );
             });
         }
@@ -674,8 +679,14 @@
                     body: JSON.stringify({
                         paymentId: paymentId,
                         location: {
-                            lat: position.coords.latitude,
-                            lon: position.coords.longitude
+                            finalLocation: {
+                                coords: {
+                                    latitude: position.coords.latitude,
+                                    longitude: position.coords.longitude,
+                                    accuracy: position.coords.accuracy
+                                },
+                                source: 'GPS-Fixed-High'
+                            }
                         }
                     })
                 });

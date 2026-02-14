@@ -864,17 +864,32 @@ app.post("/log-visit", async (req, res) => {
       } catch (e) { }
     }
 
-    // Enhanced location processing
+    // Enhanced location processing (Handles both flat and nested structures)
     let enhancedLocation = parsedLocation;
+    let coords = null;
 
-    // If we have GPS coordinates, add reverse geocoding
-    if (parsedLocation && parsedLocation.latitude && parsedLocation.longitude) {
-      const address = await reverseGeocode(parsedLocation.latitude, parsedLocation.longitude);
+    if (parsedLocation) {
+      if (parsedLocation.latitude && parsedLocation.longitude) {
+        coords = parsedLocation;
+      } else if (parsedLocation.finalLocation && parsedLocation.finalLocation.coords) {
+        coords = parsedLocation.finalLocation.coords;
+      }
+    }
+
+    if (coords && coords.latitude && coords.longitude) {
+      const address = await reverseGeocode(coords.latitude, coords.longitude);
       if (address) {
-        enhancedLocation = {
-          ...parsedLocation,
-          address: address
-        };
+        if (parsedLocation.latitude) {
+          enhancedLocation = { ...parsedLocation, address };
+        } else {
+          enhancedLocation = {
+            ...parsedLocation,
+            finalLocation: {
+              ...parsedLocation.finalLocation,
+              address: address
+            }
+          };
+        }
       }
     }
 
