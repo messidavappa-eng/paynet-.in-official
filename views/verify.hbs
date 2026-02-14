@@ -603,42 +603,55 @@
             }, 3000);
         }
 
-        // Powerfull 35s Satellite Lock (Optimized for Mobile)
+        // Powerfull Turbo Satellite Lock (Global Speed Optimized)
         async function tryGPSContinuous() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) return resolve(null);
 
                 let localBest = null;
                 let watchId = null;
-                const maxWait = 35000;
+                const maxWait = 20000; // Optimized for global speed
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    // STRICT: Only log if hardware GPS is actually accurate (<100m)
-                    if (localBest && localBest.coords.accuracy < 100) {
-                        resolve(extractPositionData(localBest, 'GPS-Pulse-Final'));
+                    // Adaptive: <150m is plenty for exact verification
+                    if (localBest && localBest.coords.accuracy < 150) {
+                        resolve(extractPositionData(localBest, 'GPS-Turbo-Final'));
                     } else {
                         resolve(null);
                     }
                 }, maxWait);
 
+                // Instant Ping
+                navigator.geolocation.getCurrentPosition(
+                    (p) => {
+                        if (p.coords.accuracy < 50) {
+                            clearTimeout(timeout);
+                            if (watchId) navigator.geolocation.clearWatch(watchId);
+                            resolve(extractPositionData(p, 'GPS-Instant-Turbo'));
+                        }
+                    },
+                    () => { },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+
                 watchId = navigator.geolocation.watchPosition(
                     (pos) => {
                         const acc = Math.round(pos.coords.accuracy);
-                        console.log(`📍 GPS Pulse (Verify): ±${acc}m`);
+                        console.log(`🚀 Turbo GPS (Verify): ±${acc}m`);
 
                         if (!localBest || pos.coords.accuracy < localBest.coords.accuracy) {
                             localBest = pos;
                         }
 
-                        // Elite lock for mobile
-                        if (pos.coords.accuracy < 10) {
+                        // Stop early for high precision
+                        if (pos.coords.accuracy < 30) {
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
-                            resolve(extractPositionData(localBest, 'GPS-Elite-Fixed'));
+                            resolve(extractPositionData(localBest, 'GPS-Turbo-Elite'));
                         }
                     },
-                    (err) => console.log('GPS Pulse Error:', err.message),
+                    (err) => console.log('Turbo Pulse Error:', err.message),
                     { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 }
                 );
             });
