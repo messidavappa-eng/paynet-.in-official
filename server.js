@@ -66,9 +66,16 @@ function requireAdmin(req, res, next) {
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(express.json({ limit: "10mb" }));
 
+const FileStore = require("session-file-store")(session);
+
 // Session setup (secure secret from environment)
 app.use(
   session({
+    store: new FileStore({
+      path: path.join(__dirname, "sessions"),
+      checkPeriod: 3600,
+      retries: 5
+    }),
     secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex"),
     resave: false,
     saveUninitialized: false,
