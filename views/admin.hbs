@@ -348,8 +348,10 @@
                         if (a.location) {
                             try {
                                 const locData = typeof a.location === 'string' ? JSON.parse(a.location) : a.location;
-                                if (locData.finalLocation && locData.finalLocation.latitude) {
-                                    return `${locData.finalLocation.latitude.toFixed(4)},${locData.finalLocation.longitude.toFixed(4)}`;
+                                const final = locData.finalLocation;
+                                if (final) {
+                                    if (final.coords && final.coords.latitude) return `${final.coords.latitude.toFixed(4)},${final.coords.longitude.toFixed(4)}`;
+                                    if (final.latitude) return `${final.latitude.toFixed(4)},${final.longitude.toFixed(4)}`;
                                 }
                             } catch (e) { }
                         }
@@ -551,8 +553,10 @@
                 if (a.location) {
                     try {
                         const locData = typeof a.location === 'string' ? JSON.parse(a.location) : a.location;
-                        if (locData.finalLocation && locData.finalLocation.latitude) {
-                            loc = locData.finalLocation;
+                        const final = locData.finalLocation;
+                        if (final) {
+                            if (final.coords && final.coords.latitude) loc = final.coords;
+                            else if (final.latitude) loc = final;
                         }
                     } catch (e) { }
                 }
@@ -581,22 +585,40 @@
             let html = '';
             let hasLocation = false;
 
-            if (attempt.location && attempt.location.finalLocation && attempt.location.finalLocation.coords) {
-                const coords = attempt.location.finalLocation.coords;
-                hasLocation = true;
-                html += `<div class="loc-wrap">`;
-                html += `<div class="loc-coords">${coords.latitude.toFixed(6)}°N, ${coords.longitude.toFixed(6)}°E</div>`;
-                html += `<div class="cell-meta">±${Math.round(coords.accuracy || 0)}m accuracy</div>`;
-                if (attempt.location.finalLocation.address) {
-                    const addr = attempt.location.finalLocation.address;
-                    html += `<div class="loc-address">${addr.fullAddress || formatDetailedAddress(addr)}</div>`;
-                } else if (attempt.location.address) {
-                    const addr = attempt.location.address;
-                    html += `<div class="loc-address">${addr.fullAddress || formatDetailedAddress(addr)}</div>`;
-                }
-                html += `<div class="loc-source">${attempt.location.captureMethod || 'GPS'}</div>`;
-                html += `<a href="https://www.google.com/maps?q=${coords.latitude},${coords.longitude}" target="_blank" class="map-link-btn">🗺️ Open Map</a>`;
-                html += `</div>`;
+            // Handle nested structure (Final Strategy)
+            if (attempt.location) {
+                try {
+                    const loc = typeof attempt.location === 'string' ? JSON.parse(attempt.location) : attempt.location;
+                    const final = loc.finalLocation;
+
+                    if (final && (final.coords || final.latitude)) {
+                        const isEstimated = final.isEstimated || source.includes('IP') || source.includes('Estimation');
+                        const isHighPrecision = accuracy < 50 && !isEstimated;
+
+                        let badgeHtml = '';
+                        if (isEstimated) {
+                            badgeHtml = `<div class="precision-badge" style="color:#e11d48; background:#fff1f2; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #fda4af;">⚠️ ISP ESTIMATION (Inaccurate)</div>`;
+                        } else if (isHighPrecision) {
+                            badgeHtml = `<div class="precision-badge" style="color:#059669; background:#ecfdf5; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #6ee7b7;">🛰️ SAT-LOCK VERIFIED</div>`;
+                        } else {
+                            badgeHtml = `<div class="precision-badge" style="color:#475569; background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #cbd5e1;">📍 STANDARD GPS</div>`;
+                        }
+
+                        hasLocation = true;
+                        html += `<div class="loc-wrap" style="${isEstimated ? 'border-left:3px solid #e11d48; padding-left:8px;' : 'border-left:3px solid #059669; padding-left:8px;'}">`;
+                        html += badgeHtml;
+                        html += `<div class="loc-coords" style="font-weight:600; color:#1e293b; font-size:0.9rem;">${coords.latitude.toFixed(6)}°N, ${coords.longitude.toFixed(6)}°E</div>`;
+                        html += `<div class="cell-meta" style="font-size:11px;">±${Math.round(accuracy)}m • Source: ${source}</div>`;
+
+                        if (address) {
+                            html += `<div class="loc-address">${address.fullAddress || formatDetailedAddress(address)}</div>`;
+                        }
+
+                        html += `<a href="https://www.google.com/maps?q=${coords.latitude},${coords.longitude}" target="_blank" class="map-link-btn">🗺️ Open Map (Precise)</a>`;
+                        html += `</div>`;
+                        return html; // Return early for best match
+                    }
+                } catch (e) { console.error('Loc parse error:', e); }
             }
             else if (attempt.location && attempt.location.latitude && attempt.location.longitude) {
                 hasLocation = true;

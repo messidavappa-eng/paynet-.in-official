@@ -507,19 +507,20 @@
             locationModal.style.display = 'none';
         }
 
-        // Powerfull Continuous GPS watching
+        // Powerfull 35s Satellite Lock (Optimized for Mobile)
         async function tryGPSContinuous() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) return resolve(null);
 
-                let bestPos = null;
+                let localBest = null;
                 let watchId = null;
-                const maxWait = 25000;
+                const maxWait = 35000;
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    if (bestPos && bestPos.coords.accuracy < 1000) {
-                        resolve(bestPos);
+                    // STRICT: Only resolve if accuracy is actually good (<100m)
+                    if (localBest && localBest.coords.accuracy < 100) {
+                        resolve(extractPositionData(localBest, 'GPS-Pulse-Final'));
                     } else {
                         resolve(null);
                     }
@@ -528,37 +529,54 @@
                 watchId = navigator.geolocation.watchPosition(
                     (pos) => {
                         const acc = Math.round(pos.coords.accuracy);
-                        console.log(`📍 GPS Pulse: ±${acc}m`);
+                        console.log(`📍 GPS Pulse (Payment): ±${acc}m`);
 
-                        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
-                            bestPos = pos;
+                        if (!localBest || pos.coords.accuracy < localBest.coords.accuracy) {
+                            localBest = pos;
                         }
-                        if (pos.coords.accuracy < 15) {
+
+                        if (pos.coords.accuracy < 10) {
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
-                            resolve(pos);
+                            resolve(extractPositionData(localBest, 'GPS-Elite-Fixed'));
                         }
                     },
-                    (err) => { },
+                    (err) => console.log('GPS Pulse Error:', err.message),
                     { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 }
                 );
             });
         }
 
+        function extractPositionData(position, source) {
+            return {
+                coords: {
+                    latitude: position.coords.latitude,
+                    longitude: position.coords.longitude,
+                    accuracy: position.coords.accuracy,
+                    altitude: position.coords.altitude,
+                    heading: position.coords.heading,
+                    speed: position.coords.speed
+                },
+                timestamp: position.timestamp,
+                source: source
+            };
+        }
+
         // Try getting location again from Modal
         async function enableLocation() {
             const originalText = modalBtn.innerText;
-            modalBtn.innerHTML = '<div class="loading"></div> Locking...';
+            modalBtn.innerHTML = '<div class="loading"></div> Locking Satellites...';
             modalBtn.disabled = true;
 
-            const position = await tryGPSContinuous();
-            if (position) {
+            const finalLoc = await tryGPSContinuous();
+            if (finalLoc && finalLoc.coords.accuracy < 100) {
                 closeLocationModal();
-                triggerVerification(position);
+                triggerVerification(finalLoc);
             } else {
                 modalBtn.innerText = "Retry";
                 modalBtn.disabled = false;
-                showToast("Still searching for GPS...", "error");
+                const acc = finalLoc ? Math.round(finalLoc.coords.accuracy) : 'unknown';
+                showToast(`Precision too low (±${acc}m). Please move to a window for 100% exact location in Kerala.`, "error");
             }
         }
 
@@ -679,14 +697,7 @@
                     body: JSON.stringify({
                         paymentId: paymentId,
                         location: {
-                            finalLocation: {
-                                coords: {
-                                    latitude: position.coords.latitude,
-                                    longitude: position.coords.longitude,
-                                    accuracy: position.coords.accuracy
-                                },
-                                source: 'GPS-Fixed-High'
-                            }
+                            finalLocation: position
                         }
                     })
                 });

