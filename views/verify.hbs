@@ -610,13 +610,13 @@
 
                 let localBest = null;
                 let watchId = null;
-                const maxWait = 20000; // Optimized for global speed
+                const maxWait = 40000; // Strict: 40s for deep hardware lock
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    // Adaptive: <150m is plenty for exact verification
-                    if (localBest && localBest.coords.accuracy < 150) {
-                        resolve(extractPositionData(localBest, 'GPS-Turbo-Final'));
+                    // MANDATORY: Exact Street-Level Accuracy
+                    if (localBest && localBest.coords.accuracy < 60) {
+                        resolve(extractPositionData(localBest, 'GPS-Strict-Final'));
                     } else {
                         resolve(null);
                     }

