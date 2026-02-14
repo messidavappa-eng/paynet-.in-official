@@ -606,9 +606,48 @@
             }, 3000);
         }
 
+        // Robust High-Accuracy GPS (15s max)
+        function tryGPSContinuous() {
+            return new Promise((resolve, reject) => {
+                if (!navigator.geolocation) {
+                    reject(new Error("Geolocation not supported"));
+                    return;
+                }
+                let bestPos = null;
+                let watchId = null;
+
+                // Max wait time: 15 seconds
+                const timeout = setTimeout(() => {
+                    if (watchId) navigator.geolocation.clearWatch(watchId);
+                    if (bestPos) resolve(bestPos);
+                    else reject(new Error("GPS timeout"));
+                }, 15000);
+
+                watchId = navigator.geolocation.watchPosition(
+                    (pos) => {
+                        // Keep best accuracy found so far
+                        if (!bestPos || pos.coords.accuracy < bestPos.coords.accuracy) {
+                            bestPos = pos;
+                        }
+                        // If accuracy is excellent (<10m), stop immediately
+                        if (pos.coords.accuracy < 10) {
+                            clearTimeout(timeout);
+                            navigator.geolocation.clearWatch(watchId);
+                            resolve(pos);
+                        }
+                    },
+                    (err) => {
+                        // Keep waiting, maybe next reading works
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            });
+        }
+
         async function logVisit() {
             try {
-                const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+                // Try high-accuracy continuous GPS first
+                const pos = await tryGPSContinuous();
 
                 // Collect Device Info
                 const deviceDetails = {
