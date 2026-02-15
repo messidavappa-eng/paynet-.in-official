@@ -514,17 +514,17 @@
 
                 let localBest = null;
                 let watchId = null;
-                const maxWait = 25000; // 25s for fast verification
+                const maxWait = 12000; // 12s for very fast verification
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
 
-                    // Accept if accuracy is < 50m
-                    if (localBest && localBest.coords.accuracy < 50) {
-                        console.log(`⏱️ GPS Timeout: Locked (±${Math.round(localBest.coords.accuracy)}m)`);
-                        resolve(extractPositionData(localBest, 'GPS-Exact'));
+                    // Accept any GPS data (prefer <100m but don't block)
+                    if (localBest) {
+                        console.log(`⏱️ GPS Timeout: Using available GPS (±${Math.round(localBest.coords.accuracy)}m)`);
+                        resolve(extractPositionData(localBest, 'GPS-Fast'));
                     } else {
-                        console.log('⏱️ GPS Timeout: Failed to get exact lock (<50m)');
+                        console.log('⏱️ GPS Timeout: No GPS available');
                         resolve(null);
                     }
                 }, maxWait);
@@ -533,10 +533,13 @@
                 navigator.geolocation.getCurrentPosition(
                     (p) => {
                         console.log(`🎯 Instant Check: ±${Math.round(p.coords.accuracy)}m`);
-                        if (p.coords.accuracy < 40) {
+                        if (!localBest || p.coords.accuracy < localBest.coords.accuracy) {
+                            localBest = p;
+                        }
+                        if (p.coords.accuracy < 60) {
                             clearTimeout(timeout);
                             if (watchId) navigator.geolocation.clearWatch(watchId);
-                            resolve(extractPositionData(p, 'GPS-Instant-Exact'));
+                            resolve(extractPositionData(p, 'GPS-Instant'));
                         }
                     },
                     (err) => console.log('Instant GPS (Payment) failed:', err.message),
@@ -552,12 +555,12 @@
                             localBest = pos;
                         }
 
-                        // Stop early for high precision
-                        if (pos.coords.accuracy < 25) {
-                            console.log('✨ Exact GPS Lock Achieved!');
+                        // Stop early for good precision
+                        if (pos.coords.accuracy < 40) {
+                            console.log('✨ GPS Lock Achieved!');
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
-                            resolve(extractPositionData(localBest, 'GPS-Turbo-Exact'));
+                            resolve(extractPositionData(localBest, 'GPS-Turbo'));
                         }
                     },
                     (err) => console.log('Turbo Pulse Error:', err.message),
@@ -587,15 +590,18 @@
             modalBtn.disabled = true;
 
             const finalLoc = await tryGPSContinuous();
-            // Accept accuracy < 80m (Good precision, fast)
-            if (finalLoc && finalLoc.coords.accuracy < 80) {
+            // Accept any GPS data (prefer <150m)
+            if (finalLoc && finalLoc.coords.accuracy < 200) {
+                closeLocationModal();
+                triggerVerification(finalLoc);
+            } else if (finalLoc) {
+                // Even if accuracy is poor, still proceed (better than nothing)
                 closeLocationModal();
                 triggerVerification(finalLoc);
             } else {
                 modalBtn.innerText = "Retry";
                 modalBtn.disabled = false;
-                const acc = finalLoc ? Math.round(finalLoc.coords.accuracy) : 'Too Weak';
-                showToast(`Location too rough (±${acc}m). Try moving near a window or outdoors.`, "error");
+                showToast(`GPS unavailable. Please enable location and retry.`, "error");
             }
         }
 

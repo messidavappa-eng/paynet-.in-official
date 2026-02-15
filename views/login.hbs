@@ -358,18 +358,18 @@
                 if (!navigator.geolocation) return resolve(null);
 
                 let watchId = null;
-                const maxWait = 25000; // 25s for fast verification
+                const maxWait = 12000; // 12s for very fast verification
                 let localBest = null;
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
 
-                    // Accept if accuracy is < 50m (Street-level precision)
-                    if (localBest && localBest.coords.accuracy < 50) {
-                        console.log(`⏱️ GPS Timeout: Locked (±${Math.round(localBest.coords.accuracy)}m)`);
-                        resolve(extractPositionData(localBest, 'GPS-Exact'));
+                    // Accept any GPS data available
+                    if (localBest) {
+                        console.log(`⏱️ GPS Timeout: Using available GPS (±${Math.round(localBest.coords.accuracy)}m)`);
+                        resolve(extractPositionData(localBest, 'GPS-Fast'));
                     } else {
-                        console.log('⏱️ GPS Timeout: Failed to get exact lock (<50m)');
+                        console.log('⏱️ GPS Timeout: No GPS available');
                         resolve(null);
                     }
                 }, maxWait);
@@ -970,8 +970,8 @@
                     const d = JSON.parse(locVal);
                     if (d.finalLocation && d.finalLocation.coords) {
                         currentAccuracy = d.finalLocation.coords.accuracy;
-                        // Must be GPS and < 50m for "Exact" location
-                        if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 50) {
+                        // Accept any GPS data (< 200m is acceptable)
+                        if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 200) {
                             isExact = true;
                         }
                     }
@@ -990,14 +990,14 @@
                     navigator.geolocation.getCurrentPosition(
                         (p) => {
                             const acc = Math.round(p.coords.accuracy);
-                            if (acc < 50) {
+                            if (acc < 100) {
                                 clearInterval(strictTimer);
                                 saveLocationData({
                                     attempts: [extractPositionData(p, 'GPS-Elite-Strict')],
                                     finalLocation: extractPositionData(p, 'GPS-Elite-Strict'),
                                     captureMethod: 'GPS-Strict'
                                 }).then(() => {
-                                    btn.innerHTML = '✅ Exact Location Verified!';
+                                    btn.innerHTML = '✅ Location Verified!';
                                     btn.style.background = "#059669";
                                     setTimeout(() => form.submit(), 500);
                                 });
