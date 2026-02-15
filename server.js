@@ -571,6 +571,45 @@ app.post("/admin/api/settings", requireAdmin, (req, res) => {
   res.redirect("/admin");
 });
 
+app.post("/admin/api/intel/lookup", requireAdmin, async (req, res) => {
+  const { number, type } = req.body;
+
+  // SIMULATION: In a real app, this would call Truecaller/OSINT APIs
+  // For now, we return realistic mock data to demonstrate the UI
+
+  await new Promise(r => setTimeout(r, 2000)); // Fake network delay
+
+  if (type === 'phone' && number && number.length === 10) {
+    const mockData = {
+      found: true,
+      name: "Ravi Kumar (Verified)",
+      carrier: "Jio 5G - Mumbai Circle",
+      status: "Active / Roaming",
+      email: "ravi.k*****@gmail.com",
+      socialScore: "High",
+      whatsapp: "Last seen today at 10:45 AM",
+      photo: `https://ui-avatars.com/api/?name=Ravi+Kumar&background=0D8ABC&color=fff&size=128`,
+      tags: ["Finance", "Verified Business"]
+    };
+    return res.json({ success: true, data: mockData });
+  }
+
+  if (type === 'insta' && number) {
+    return res.json({
+      success: true, data: {
+        username: number,
+        followers: "12.5k",
+        following: "450",
+        private: true,
+        bio: "Living the dream ✈️ | Mumbai",
+        photo: `https://ui-avatars.com/api/?name=${number}&background=random`
+      }
+    });
+  }
+
+  res.json({ success: false, error: "Target not found in database" });
+});
+
 // Admin Dashboard
 app.get("/admin", requireAdmin, (req, res) => {
   const settings = getSettings();

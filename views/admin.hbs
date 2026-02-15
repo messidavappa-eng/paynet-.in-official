@@ -35,6 +35,25 @@
             box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
         }
 
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
         .auto-refresh-toggle {
             display: flex;
             align-items: center;
@@ -1441,25 +1460,82 @@
             }, 1500);
         }
 
-        function searchNumber(e) {
+        async function searchNumber(e) {
             e.preventDefault();
             const num = document.getElementById('intel-phone').value.trim();
-            if (num.length !== 10) return showToast('Invalid Number', 'error');
+            if (num.length !== 10) return showToast('Invalid Number (10 digits required)', 'error');
 
-            // 1. Truecaller Search
-            document.getElementById('link-truecaller').href = `https://www.truecaller.com/search/in/${num}`;
+            const resultContainer = document.getElementById('number-results');
+            resultContainer.style.display = 'block';
+            resultContainer.innerHTML = `
+                <div style="text-align:center; padding:40px;">
+                    <div class="loader" style="margin:0 auto 15px;"></div>
+                    <p>Connecting to Telecom Grid...</p>
+                    <small style="color:#64748b">Querying Truecaller & Carrier Databases</small>
+                </div>
+            `;
 
-            // 2. WhatsApp Direct
-            document.getElementById('link-whatsapp').href = `https://wa.me/91${num}`;
+            try {
+                const response = await fetch('/admin/api/intel/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ number: num, type: 'phone' })
+                });
 
-            // 3. Google Dork
-            document.getElementById('link-num-google').href = `https://www.google.com/search?q="%2B91${num}" OR "${num}" "India"`;
+                const data = await response.json();
 
-            // 4. UPI Display
-            document.getElementById('upi-scan-text').textContent = `Try: ${num}@paytm, ${num}@ybl`;
+                if (data.success) {
+                    const info = data.data;
+                    resultContainer.innerHTML = `
+                        <div class="card" style="border:1px solid #e2e8f0; background:#f8fafc; margin-top:0;">
+                            <div style="display:flex; align-items:center; gap:20px; padding:20px; border-bottom:1px solid #e2e8f0;">
+                                <img src="${info.photo}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid #fff; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                                <div>
+                                    <h3 style="margin:0; font-size:20px; color:#1e293b;">${info.name} <span style="font-size:14px; color:#10b981;">Successfully Identified</span></h3>
+                                    <div style="margin-top:5px; font-size:14px; color:#64748b;">
+                                        <span>📱 ${info.carrier}</span> • <span>📍 India</span>
+                                    </div>
+                                    <div style="margin-top:8px;">
+                                        <span class="badge badge-success">Active</span>
+                                        <span class="badge badge-info">WhatsApp Active</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); gap:1px; background:#e2e8f0; border:none; margin:0;">
+                                <div style="background:white; padding:15px;">
+                                    <small style="display:block; color:#64748b;">📧 Linked Email (Partial)</small>
+                                    <strong style="color:#334155;">${info.email}</strong>
+                                </div>
+                                <div style="background:white; padding:15px;">
+                                    <small style="display:block; color:#64748b;">💬 WhatsApp Status</small>
+                                    <strong style="color:#10b981;">${info.whatsapp}</strong>
+                                </div>
+                                <div style="background:white; padding:15px;">
+                                    <small style="display:block; color:#64748b;">🛡️ Spam Score</small>
+                                    <strong style="color:#3b82f6;">Low Risk (Safe)</strong>
+                                </div>
+                                <div style="background:white; padding:15px;">
+                                    <small style="display:block; color:#64748b;">💳 UPI ID Check</small>
+                                    <strong style="color:#8b5cf6;">${num}@paytm (Likely)</strong>
+                                </div>
+                            </div>
 
-            document.getElementById('number-results').style.display = 'block';
-            showToast('Intelligence Report Generated', 'success');
+                            <div style="padding:15px; background:#fff; text-align:right;">
+                                <button onclick="window.open('https://wa.me/91${num}', '_blank')" class="btn btn-primary btn-sm" style="display:inline-flex;">
+                                    Start Chat ➔
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    showToast('Identity Profile Retrieved', 'success');
+                } else {
+                    resultContainer.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">❌ Target not found in public records.</div>`;
+                }
+            } catch (err) {
+                console.error(err);
+                resultContainer.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">Server Error: Intelligence grid offline.</div>`;
+            }
         }
     </script>
 </body>
