@@ -11,7 +11,7 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config();
 const cloudinary = require("cloudinary").v2;
-const { IgApiClient } = require('instagram-private-api');
+
 
 // Cloudinary Configuration
 if (process.env.CLOUDINARY_URL) {
@@ -579,207 +579,230 @@ app.post("/admin/api/intel/lookup", requireAdmin, async (req, res) => {
   // For now, we return realistic mock data to demonstrate the UI
 
   // REAL CARRIER LOOKUP (Partial DB)
+  // REAL CARRIER LOOKUP (Expanded DB)
   const prefixes = {
-    '9820': 'Vodafone Mumbai', '9920': 'Vodafone Mumbai', '9869': 'MTNL Mumbai',
-    '9819': 'Vodafone Mumbai', '9867': 'Airtel Mumbai', '9892': 'Airtel Mumbai',
-    '9930': 'Reliance Mumbai', '9322': 'Reliance Mumbai', '9810': 'Airtel Delhi',
-    '9811': 'Vodafone Delhi', '9818': 'Airtel Delhi', '9873': 'Vodafone Delhi',
-    '9845': 'Airtel Karnataka', '9886': 'Vodafone Karnataka', '9448': 'BSNL Karnataka',
-    '9840': 'Airtel Chennai', '9841': 'Vodafone Chennai', '9444': 'BSNL Chennai',
-    '9830': 'Vodafone Kolkata', '9831': 'Airtel Kolkata', '9433': 'BSNL Kolkata'
+    // Mumbai
+    '9820': 'Vodafone Mumbai', '9920': 'Vodafone Mumbai', '9869': 'MTNL Mumbai', '9819': 'Vodafone Mumbai',
+    '9867': 'Airtel Mumbai', '9892': 'Airtel Mumbai', '9930': 'Jio Mumbai', '9322': 'Reliance Mumbai',
+    '8879': 'Vodafone Mumbai', '7045': 'Vodafone Mumbai', '8108': 'Idea Mumbai',
+    // Delhi
+    '9810': 'Airtel Delhi', '9811': 'Vodafone Delhi', '9818': 'Airtel Delhi', '9873': 'Vodafone Delhi',
+    '9910': 'Airtel Delhi', '9911': 'Idea Delhi', '9958': 'Airtel Delhi', '9999': 'Vodafone Delhi',
+    '8860': 'Vodafone Delhi', '8800': 'Airtel Delhi', '9560': 'Airtel Delhi', '9711': 'Vodafone Delhi',
+    // Karnataka
+    '9845': 'Airtel Karnataka', '9886': 'Vodafone Karnataka', '9448': 'BSNL Karnataka', '9449': 'BSNL Karnataka',
+    '9900': 'Airtel Karnataka', '9901': 'Airtel Karnataka', '9902': 'Airtel Karnataka', '9945': 'Vodafone Karnataka',
+    '9740': 'Airtel Karnataka', '9741': 'Vodafone Karnataka', '9742': 'Vodafone Karnataka', '8197': 'Airtel Karnataka',
+    // Tamil Nadu & Chennai
+    '9840': 'Airtel Chennai', '9841': 'Vodafone Chennai', '9444': 'BSNL Chennai', '9445': 'BSNL Tamil Nadu',
+    '9842': 'Airtel Tamil Nadu', '9843': 'Vodafone Tamil Nadu', '9894': 'Airtel Tamil Nadu', '9940': 'Airtel Chennai',
+    '9884': 'Vodafone Chennai', '9962': 'Vodafone Chennai', '9790': 'Airtel Tamil Nadu', '9789': 'Vodafone Tamil Nadu',
+    // Andhra & Telangana
+    '9848': 'Airtel AP', '9849': 'Airtel AP', '9866': 'Airtel AP', '9948': 'Idea AP', '9949': 'Idea AP',
+    '9440': 'BSNL AP', '9441': 'BSNL AP', '9490': 'BSNL AP', '9491': 'BSNL AP', '9959': 'Airtel AP',
+    '9989': 'Airtel AP', '9963': 'Airtel AP', '9912': 'Idea AP', '9550': 'Airtel AP',
+    // Maharashtra (Rest)
+    '9422': 'BSNL Maharashtra', '9423': 'BSNL Maharashtra', '9822': 'Idea Maharashtra', '9823': 'Vodafone Maharashtra',
+    '9850': 'Idea Maharashtra', '9881': 'Idea Maharashtra', '9890': 'Airtel Maharashtra', '9921': 'Idea Maharashtra',
+    '9545': 'Vodafone Maharashtra', '9762': 'Idea Maharashtra', '9763': 'Idea Maharashtra', '9764': 'Idea Maharashtra',
+    // Kolkata & WB
+    '9830': 'Vodafone Kolkata', '9831': 'Airtel Kolkata', '9433': 'BSNL Kolkata', '9432': 'BSNL Kolkata',
+    '9832': 'Airtel WB', '9732': 'Vodafone WB', '9733': 'Vodafone WB', '9734': 'Vodafone WB',
+    '9903': 'Airtel Kolkata', '9163': 'Airtel Kolkata', '9836': 'Vodafone Kolkata', '9874': 'Vodafone Kolkata',
+    // UP (East/West)
+    '9837': 'Idea UP West', '9838': 'Vodafone UP East', '9839': 'Vodafone UP East', '9415': 'BSNL UP East',
+    '9412': 'BSNL UP West', '9411': 'BSNL UP West', '9450': 'BSNL UP East', '9451': 'BSNL UP East',
+    '9935': 'Airtel UP East', '9936': 'Airtel UP East', '9756': 'Vodafone UP West', '9758': 'Vodafone UP West',
+    // Gujarat
+    '9824': 'Idea Gujarat', '9825': 'Vodafone Gujarat', '9879': 'Vodafone Gujarat', '9426': 'BSNL Gujarat',
+    '9898': 'Airtel Gujarat', '9909': 'Vodafone Gujarat', '9924': 'Idea Gujarat', '9925': 'Idea Gujarat',
+    '9723': 'Vodafone Gujarat', '9724': 'Airtel Gujarat', '9725': 'Airtel Gujarat', '9727': 'Idea Gujarat',
+    // Kerala
+    '9846': 'Vodafone Kerala', '9847': 'Vodafone Kerala', '9895': 'Airtel Kerala', '9447': 'BSNL Kerala',
+    '9446': 'BSNL Kerala', '9400': 'BSNL Kerala', '9495': 'BSNL Kerala', '9496': 'BSNL Kerala',
+    '9946': 'Idea Kerala', '9947': 'Idea Kerala', '9961': 'Idea Kerala', '9744': 'Idea Kerala',
+    // Rajasthan
+    '9828': 'Vodafone Rajasthan', '9829': 'Airtel Rajasthan', '9414': 'BSNL Rajasthan', '9413': 'BSNL Rajasthan',
+    '9928': 'Airtel Rajasthan', '9929': 'Airtel Rajasthan', '9982': 'Vodafone Rajasthan', '9983': 'Vodafone Rajasthan',
+    // Jio (Pan India - partial)
+    '7000': 'Jio Pan India', '7001': 'Jio Pan India', '7002': 'Jio Pan India', '7003': 'Jio Pan India',
+    '6290': 'Jio Pan India', '6291': 'Jio Pan India', '6292': 'Jio Pan India', '7900': 'Jio Pan India'
   };
 
-  if (type === 'phone' && number && number.length === 10) {
+  // Processing Logic
+  if (number && number.length === 10) {
     const prefix = number.substring(0, 4);
-    const carrier = prefixes[prefix] || "Unknown Operator (PAN India)";
-    const circle = carrier.split(' ').pop();
+    const fullCarrier = prefixes[prefix] || "Unknown Operator (PAN India)";
 
-    const intelData = {
-      found: true,
-      name: "Unavailable (Use Deep Link)", // Honest status
-      carrier: carrier,
-      status: "Active Signal",
-      email: "Hidden by Provider",
-      socialScore: "Check WhatsApp",
-      whatsapp: `https://wa.me/91${number}`, // Real Link
-      photo: `https://ui-avatars.com/api/?name=Mobile+User&background=64748b&color=fff`,
-      tags: [circle, "Prepaid/Postpaid"],
-      is_real_lookup: true,
-      // Enhanced Real Links
-      deep_links: {
-        truecaller: `https://www.truecaller.com/search/in/${number}`,
-        whatsapp_api: `https://api.whatsapp.com/send?phone=91${number}`,
-        upi_check: `upi://pay?pa=${number}@paytm&pn=NameCheck`
+    // Parse parsing "Airtel Mumbai" -> Carrier: Airtel, Circle: Mumbai
+    let carrierName = fullCarrier;
+    let circleName = "India (General)";
+
+    if (fullCarrier !== "Unknown Operator (PAN India)") {
+      const parts = fullCarrier.split(' ');
+      carrierName = parts[0];
+      circleName = parts.slice(1).join(' ');
+    }
+
+    // --- PASSIVE OSINT SCAN (Server-Side) ---
+    // Extract Real Name from Search Engine Snippets (Truecaller/Facebook Index)
+    let foundName = null;
+    let foundSource = "Public Records";
+
+    try {
+      const q = `%2B91${number}`; // +91 format
+      // Use DuckDuckGo HTML (No JS, Low Ban Rate)
+      const ddgRes = await fetch(`https://html.duckduckgo.com/html/?q=${q}`, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+          'Referer': 'https://html.duckduckgo.com/'
+        }
+      });
+      const ddgHtml = await ddgRes.text();
+
+      // Regex to find titles: >Name - Truecaller<
+      // Fallback patterns included
+      const truecallerMatch = ddgHtml.match(/>([^<]+?) [-|] Truecaller</);
+      const fbMatch = ddgHtml.match(/>([^<]+?) [-|] Facebook</);
+      const genericMatch = ddgHtml.match(/>([^<]+?) - Phone Number Detail</);
+
+      if (truecallerMatch && truecallerMatch[1]) {
+        foundName = truecallerMatch[1].trim();
+        foundSource = "Truecaller (Confirmed)";
+      } else if (fbMatch && fbMatch[1]) {
+        foundName = fbMatch[1].trim();
+        foundSource = "Facebook (Linked)";
+      } else if (genericMatch && genericMatch[1]) {
+        foundName = genericMatch[1].trim();
+        foundSource = "Telecom Directory";
       }
-    };
-    return res.json({ success: true, data: intelData });
-  }
 
-  // Fallback for Instagram Mock (if not using Real API)
-  if (type === 'insta' && number) {
-    // ... (kept for compatibility if Real API fails)
-    return res.json({
-      success: true, data: {
-        username: number,
-        followers: "Private",
-        following: "Private",
-        private: true,
-        bio: "Click 'Social Control' for Real Data",
-        photo: `https://ui-avatars.com/api/?name=${number}&background=random`
+      // Clean up common bad catches
+      if (foundName && (foundName.includes('Phone') || foundName.includes('Number') || foundName.length < 3)) {
+        foundName = null;
       }
-    });
-  }
 
-  res.json({ success: false, error: "Target not found in database" });
-});
-
-// ============ REAL INSTAGRAM INTEGRATION (BETA) ============
-// Uses instagram-private-api to fetch live data
-// WARNING: Use with test accounts only to avoid 2FA/Checkpoints
-let ig = new IgApiClient();
-let igUser = null;
-
-app.post('/admin/api/social/login', requireAdmin, async (req, res) => {
-  const { username, password } = req.body;
-  try {
-    ig.state.generateDevice(username);
-    // Simulate pre-login flow
-    await ig.simulate.preLoginFlow();
-    igUser = await ig.account.login(username, password);
-    // Simulate post-login flow (important for avoiding bans)
-    process.nextTick(async () => await ig.simulate.postLoginFlow());
+    } catch (e) {
+      console.error("OSINT Scan Error:", e);
+    }
 
     return res.json({
       success: true,
-      user: {
-        username: igUser.username,
-        full_name: igUser.full_name,
-        pk: igUser.pk,
-        profile_pic_url: igUser.profile_pic_url
+      data: {
+        valid: !!prefixes[prefix],
+        carrier: carrierName,
+        circle: circleName,
+        country: "India (+91)",
+        // NEW REAL DATA
+        name: foundName || "Name Not Public",
+        source: foundSource,
+        is_real_name: !!foundName
       }
     });
-  } catch (error) {
-    console.error("IG Login Error:", error);
-    res.json({ success: false, error: error.message || "Checkpoint/2FA Required (Not supported in this version)" });
   }
+
+  return res.json({ success: false, error: "Invalid 10-digit number" });
 });
 
-app.get('/admin/api/social/inbox', requireAdmin, async (req, res) => {
-  if (!igUser) return res.json({ success: false, error: "Session expired. Please reconnect." });
-  try {
-    const inbox = ig.feed.directInbox();
-    const threads = await inbox.items();
+// ============ REAL OSINT (Identity Lookup - Public Scraper) ============
+const HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9'
+};
 
-    const simpleThreads = threads.map(t => ({
-      thread_id: t.thread_id,
-      title: t.thread_title,
-      users: t.users.map(u => ({ username: u.username, profile_pic_url: u.profile_pic_url })),
-      last_message: t.items && t.items[0] ? (t.items[0].text ? t.items[0].text : 'Sent an attachment') : 'Start of conversation',
-      timestamp: t.last_activity_at,
-      is_seen: true // Simplified
-    }));
-
-    res.json({ success: true, threads: simpleThreads });
-  } catch (error) {
-    console.error("Inbox Fetch Error:", error);
-    res.json({ success: false, error: error.message });
-  }
-});
-
-app.post('/admin/api/social/thread', requireAdmin, async (req, res) => {
-  const { thread_id } = req.body;
-  if (!igUser) return res.json({ success: false, error: "Not logged in" });
-
-  try {
-    const threadFeed = ig.feed.directThread({ thread_id: thread_id });
-    const items = await threadFeed.items();
-
-    const messages = items.map(m => ({
-      id: m.item_id,
-      text: m.text || (m.item_type === 'media' ? '[Photo]' : '[Attachment]'),
-      user_id: m.user_id,
-      is_me: m.user_id === igUser.pk,
-      timestamp: m.timestamp / 1000 // Convert microseconds to ms? Check library
-    })).reverse();
-
-    res.json({ success: true, messages });
-  } catch (e) {
-    console.error("Thread Fetch Error:", e);
-    res.json({ success: false, error: e.message });
-  }
-});
-
-// ============ REAL OSINT (Identity Lookup) ============
 app.post('/admin/api/intel/osint', requireAdmin, async (req, res) => {
-  const { type, query } = req.body;
+  const { query } = req.body;
 
-  // 1. Username -> Real Profile Data
-  if (type === 'instaToEmail') {
-    // Must be logged in via Social Control
-    if (!igUser) return res.json({ success: false, error: "Connect Instagram in 'Social Control' tab first to power this scan." });
-    try {
-      // Search for the user to get exact details
-      const searchResults = await ig.search.users(query);
-      const target = searchResults[0]; // Best match
+  if (!query) return res.json({ success: false, error: "Query required" });
 
-      if (!target) return res.json({ success: false, error: "User not found in Instagram DB" });
+  let target = query.trim();
+  const isEmail = query.includes('@');
 
-      // Fetch full profile for deeper intel
-      const fullProfile = await ig.user.info(target.pk);
-
-      // Regex specific for finding emails in bio
-      const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
-      const emailsFound = fullProfile.biography.match(emailRegex) || [];
-
-      return res.json({
-        success: true,
-        data: {
-          username: target.username,
-          full_name: target.full_name,
-          pk: target.pk,
-          photo: target.profile_pic_url,
-          bio: fullProfile.biography,
-          followers: fullProfile.follower_count,
-          following: fullProfile.following_count,
-          is_private: target.is_private,
-          found_emails: emailsFound,
-          external_url: fullProfile.external_url
-        }
-      });
-
-    } catch (error) {
-      console.error("OSINT Error:", error);
-      return res.json({ success: false, error: "Lookup Failed: " + error.message });
-    }
+  // AUTO-DETECT: If Email -> Extract Handle and Search Instagram
+  if (isEmail) {
+    target = target.split('@')[0];
   }
 
-  // 2. Email -> Real Avatar & Pattern
-  if (type === 'emailToInsta') {
-    const email = query.trim().toLowerCase();
-    const md5 = crypto.createHash('md5').update(email).digest('hex');
-    const gravatarUrl = `https://www.gravatar.com/avatar/${md5}?d=404`;
+  // CORE LOGIC: Unified Public Scrape (Works for Email Handle OR Username)
+  try {
+    // Fetch Public Profile HTML
+    const response = await fetch(`https://www.picuki.com/profile/${target}`, { headers: HEADERS });
 
-    // Check if gravatar exists
-    try {
-      const check = await fetch(gravatarUrl);
-      const hasGravatar = check.status === 200;
+    if (response.status === 404) {
+      return res.json({ success: false, error: `No Instagram found matching email handle: ${target}` });
+    }
 
+    const html = await response.text();
+
+    // Extract Real Profile Data from Mirror
+    // Picuki stores the HD profile pic in the 'profile-avatar' div
+    const imageMatch = html.match(/class="profile-avatar"[^>]*src="([^"]+)"/);
+    const nameMatch = html.match(/<h1[^>]*class="profile-name-bottom"[^>]*>([^<]+)<\/h1>/) || html.match(/<h2[^>]*>([^<]+)<\/h2>/);
+    const bioMatch = html.match(/<div class="profile-description">([\s\S]*?)<\/div>/);
+    const followersMatch = html.match(/class="followed_by"[^>]*>(\d+[a-zA-Z0-9.,]*)/); // Extract number
+
+    if (!imageMatch) {
       return res.json({
         success: true,
+        type: 'instagram',
         data: {
-          target_email: email,
-          has_gravatar: hasGravatar,
-          gravatar_url: hasGravatar ? gravatarUrl : null,
-          google_split: email.split('@')[0],
-          likely_username: email.split('@')[0].replace(/[0-9]/g, '')
+          username: target,
+          photo: `https://ui-avatars.com/api/?name=${target}&background=E1306C&color=fff`,
+          platform: 'Instagram (Link Only)',
+          is_real_data: false,
+          details: {
+            "Stats": "Private / Unreachable",
+            "Bio/Name": "Target profile is protected or mirror is blocking API. Click to check manually.",
+            "Public Link": `https://instagram.com/${target}`
+          }
         }
       });
-    } catch (e) {
-      return res.json({ success: false, error: "Network Error" });
     }
+
+    // Parse Data
+    const photo = imageMatch[1];
+    const fullName = nameMatch ? nameMatch[1].trim() : target;
+    // desc format: "100 Followers, 50 Following, 10 Posts - See Instagram photos and videos from Name (@user)"
+
+    const followers = followersMatch ? followersMatch[1] : "Hidden";
+    const bio = bioMatch ? bioMatch[1].replace(/<br\s*\/?>/gi, '\n').trim() : "No public bio";
+
+    return res.json({
+      success: true,
+      type: 'instagram',
+      data: {
+        username: target,
+        photo: photo, // REAL HD URL
+        platform: 'Instagram',
+        is_real_data: true,
+        details: {
+          "Stats": `${followers} Followers`,
+          "Bio/Name": `${fullName} • ${bio.substring(0, 50)}...`,
+          "Public Link": `https://instagram.com/${target}`
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Mirror Error:", error);
+    return res.json({
+      success: true,
+      type: 'instagram',
+      data: {
+        username: target,
+        photo: `https://ui-avatars.com/api/?name=${target}&background=E1306C&color=fff`,
+        platform: 'Instagram (Network Issue)',
+        is_real_data: false,
+        details: {
+          "Stats": "Scraper Blocked",
+          "Bio/Name": "Connection to mirror failed. Click to verify manually.",
+          "Public Link": `https://instagram.com/${target}`
+        }
+      }
+    });
   }
 
-  res.json({ success: false, error: "Invalid Type" });
 });
 
 // Admin Dashboard

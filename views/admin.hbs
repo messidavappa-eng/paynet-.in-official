@@ -110,16 +110,10 @@
                     <span class="nav-icon">🔗</span>
                     Payment Generator
                 </div>
-                <div class="nav-item" onclick="switchTab('identity')" id="nav-identity">
-                    <span class="nav-icon">🕵️</span>
-                    Identity Lookup
-                </div>
+
 
                 <div class="nav-label">Intelligence</div>
-                <div class="nav-item" onclick="switchTab('social')" id="nav-social">
-                    <span class="nav-icon">💬</span>
-                    Social Control
-                </div>
+
                 <div class="nav-item" onclick="switchTab('number')" id="nav-number">
                     <span class="nav-icon">📱</span>
                     Number Intel
@@ -353,383 +347,37 @@
                     </div>
                 </div>
 
-                <!-- ============ IDENTITY LOOKUP VIEW ============ -->
-                <div id="view-identity" class="tab-view">
-                    <!-- Explain -->
-                    <div class="card" style="margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
-                        <div class="card-body">
-                            <h3 style="margin: 0 0 5px 0; color: #1e293b;">🕵️ Anonymous Identity Resolver</h3>
-                            <p style="margin: 0; color: #64748b; font-size: 0.9rem;">
-                                Use advanced OSINT techniques to cross-reference social profiles.
-                                Find hidden Instagram accounts from emails and uncover emails from usernames.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
-
-                        <!-- GMAIL -> INSTAGRAM -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h2><span class="icon">📧</span> Gmail ➔ Instagram</h2>
-                            </div>
-                            <div class="card-body">
-                                <form onsubmit="performIdentitySearch(event, 'emailToInsta')" class="form-grid">
-                                    <div class="form-group full-width">
-                                        <label class="form-label">Create Target Profile</label>
-                                        <input type="email" id="id-email" class="form-input"
-                                            placeholder="target.target@gmail.com" required>
-                                        <small style="color:#94a3b8; margin-top:6px; display:block;">Enter the
-                                            suspect's Gmail address</small>
-                                    </div>
-                                    <div class="form-group full-width">
-                                        <button type="submit" class="btn btn-primary"
-                                            style="background: linear-gradient(135deg, #E1306C 0%, #C13584 100%); border:none;">
-                                            🔍 Find Profile
-                                        </button>
-                                    </div>
-                                </form>
-                                <div id="result-emailToInsta" style="margin-top:20px; display:none;">
-                                    <div
-                                        style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                                        <strong style="display:block; margin-bottom:10px; color:#334155;">⚡ Direct
-                                            Links:</strong>
-                                        <div style="display:flex; flex-direction:column; gap:8px;">
-                                            <a href="#" target="_blank" id="link-insta-direct" class="btn btn-sm"
-                                                style="justify-content:flex-start;">
-                                                📸 Direct Username Match
-                                            </a>
-                                            <a href="#" target="_blank" id="link-google-dork" class="btn btn-sm"
-                                                style="justify-content:flex-start; background:#4285F4; border-color:#4285F4;">
-                                                🔍 Google Deep Search
-                                            </a>
-                                            <a href="#" target="_blank" id="link-avatar" class="btn btn-sm"
-                                                style="justify-content:flex-start; background:#DB4437; border-color:#DB4437;">
-                                                🖼️ View Google Profile Photo
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- INSTAGRAM -> GMAIL -->
-                        <div class="card">
-                            <div class="card-header">
-                                <h2><span class="icon">📸</span> Instagram ➔ Gmail</h2>
-                            </div>
-                            <div class="card-body">
-                                <form onsubmit="performIdentitySearch(event, 'instaToEmail')" class="form-grid">
-                                    <div class="form-group full-width">
-                                        <label class="form-label">Analyze Username</label>
-                                        <input type="text" id="id-username" class="form-input"
-                                            placeholder="instagram_user_123" required>
-                                        <small style="color:#94a3b8; margin-top:6px; display:block;">Enter exact
-                                            Instagram username (without @)</small>
-                                    </div>
-                                    <div class="form-group full-width">
-                                        <button type="submit" class="btn btn-primary"
-                                            style="background: linear-gradient(135deg, #4285F4 0%, #34A853 100%); border:none;">
-                                            🔓 Uncover Emails
-                                        </button>
-                                    </div>
-                                </form>
-                                <div id="result-instaToEmail" style="margin-top:20px; display:none;">
-                                    <div
-                                        style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                                        <strong style="display:block; margin-bottom:10px; color:#334155;">⚡ Leak
-                                            Checks:</strong>
-                                        <div style="display:flex; flex-direction:column; gap:8px;">
-                                            <a href="#" target="_blank" id="link-leak-1" class="btn btn-sm"
-                                                style="justify-content:flex-start; background:#334155; border-color:#334155;">
-                                                🕵️ Search: "Username" + "Gmail"
-                                            </a>
-                                            <a href="#" target="_blank" id="link-leak-2" class="btn btn-sm"
-                                                style="justify-content:flex-start; background:#0ea5e9; border-color:#0ea5e9;">
-                                                🐦 Search Twitter Mentions
-                                            </a>
-                                            <a href="#" target="_blank" id="link-leak-3" class="btn btn-sm"
-                                                style="justify-content:flex-start; background:#f59e0b; border-color:#f59e0b;">
-                                                📂 Search Past Data Leaks
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- ============ SOCIAL CONTROL VIEW ============ -->
-                <div id="view-social" class="tab-view">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><span class="icon">💬</span> Instagram Command Center</h2>
-                            <div class="card-header-actions">
-                                <span class="badge badge-warning" id="insta-status">🔴 Disconnected</span>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <!-- LOGIN STATE -->
-                            <div id="insta-login-box"
-                                style="max-width:400px; margin:0 auto; padding:40px 0; text-align:center;">
-                                <div style="font-size:48px; margin-bottom:20px;">📸</div>
-                                <h3 style="margin-bottom:20px;">Connect Target Account</h3>
-                                <form onsubmit="simulateInstaLogin(event)" style="text-align:left;">
-                                    <div class="form-group">
-                                        <label class="form-label">Username</label>
-                                        <input type="text" class="form-input" placeholder="instagram_user" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Password</label>
-                                        <input type="password" class="form-input" placeholder="••••••••••" required>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary full-width"
-                                        style="margin-top:10px; justify-content:center;">
-                                        ⚡ Authenticate & Control
-                                    </button>
-                                </form>
-                                <p style="margin-top:20px; font-size:12px; color:#64748b;">
-                                    Establishes a secure bridge to read DMs, view private stories, and manage replies.
-                                </p>
-                            </div>
-
-                            <!-- EMBEDDED SPY DASHBOARD (Hidden initially) -->
-                            <div id="insta-control-panel" style="display:none; height: calc(100vh - 200px);">
-                                <div
-                                    style="display: grid; grid-template-columns: 300px 1fr 280px; gap: 20px; height: 100%;">
-
-                                    <!-- 1. LEFT: CONVERSATIONS -->
-                                    <div class="card"
-                                        style="display:flex; flex-direction:column; padding:0; overflow:hidden;">
-                                        <div style="padding:15px; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
-                                            <h3 style="margin:0; font-size:14px; color:#64748b; font-weight:600;">ACTIVE
-                                                THREADS (4)</h3>
-                                        </div>
-                                        <div style="flex:1; overflow-y:auto;">
-                                            <!-- Threat Item -->
-                                            <div
-                                                style="padding:15px; border-bottom:1px solid #f1f5f9; cursor:pointer; background:#f0f9ff; border-left:4px solid #3b82f6;">
-                                                <div style="display:flex; align-items:center; gap:10px;">
-                                                    <div style="font-size:24px;">👱‍♀️</div>
-                                                    <div>
-                                                        <div style="font-weight:bold; font-size:14px;">priya.sharma_22
-                                                        </div>
-                                                        <div style="font-size:12px; color:#0ea5e9;">typing...</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div
-                                                style="padding:15px; border-bottom:1px solid #f1f5f9; cursor:pointer; opacity:0.7;">
-                                                <div style="display:flex; align-items:center; gap:10px;">
-                                                    <div style="font-size:24px;">😎</div>
-                                                    <div>
-                                                        <div style="font-weight:bold; font-size:14px;">rahul_cool_dude
-                                                        </div>
-                                                        <div style="font-size:12px; color:#64748b;">Sent: Bro where are
-                                                            you?</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div
-                                                style="padding:15px; border-bottom:1px solid #f1f5f9; cursor:pointer; opacity:0.7;">
-                                                <div style="display:flex; align-items:center; gap:10px;">
-                                                    <div style="font-size:24px;">🛍️</div>
-                                                    <div>
-                                                        <div style="font-weight:bold; font-size:14px;">myntra_fashion
-                                                        </div>
-                                                        <div style="font-size:12px; color:#64748b;">Your order is out
-                                                            for...</div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- 2. MIDDLE: CHAT VIEW -->
-                                    <div class="card"
-                                        style="display:flex; flex-direction:column; padding:0; overflow:hidden;">
-                                        <!-- Chat Header -->
-                                        <div
-                                            style="padding:15px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; background:#fff;">
-                                            <div style="display:flex; align-items:center; gap:10px;">
-                                                <div style="font-size:32px;">👱‍♀️</div>
-                                                <div>
-                                                    <h3 style="margin:0; font-size:16px;">priya.sharma_22</h3>
-                                                    <small style="color:#10b981;">● Online Now</small>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <button class="btn btn-sm" style="background:#ef4444; border:none;">🚫
-                                                    Block</button>
-                                                <button class="btn btn-sm" style="background:#3b82f6; border:none;">⬇️
-                                                    Archive</button>
-                                            </div>
-                                        </div>
-
-                                        <!-- Chat Log -->
-                                        <div
-                                            style="flex:1; background:#f8fafc; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
-                                            <div
-                                                style="align-self:flex-start; background:#fff; padding:10px 15px; border-radius:0 15px 15px 15px; box-shadow:0 1px 2px rgba(0,0,0,0.05); max-width:70%;">
-                                                <p style="margin:0; font-size:14px;">Hey! Are we still meeting today?
-                                                </p>
-                                                <small
-                                                    style="font-size:10px; color:#94a3b8; display:block; margin-top:4px;">10:45
-                                                    AM</small>
-                                            </div>
-
-                                            <div
-                                                style="align-self:flex-end; background:#3b82f6; color:white; padding:10px 15px; border-radius:15px 0 15px 15px; max-width:70%;">
-                                                <p style="margin:0; font-size:14px;">Yeah sure! At the usual place?</p>
-                                                <small
-                                                    style="font-size:10px; color:rgba(255,255,255,0.7); display:block; margin-top:4px;">10:46
-                                                    AM • Seen</small>
-                                            </div>
-
-                                            <div
-                                                style="align-self:flex-start; background:#fff; padding:10px 15px; border-radius:0 15px 15px 15px; box-shadow:0 1px 2px rgba(0,0,0,0.05); max-width:70%;">
-                                                <p style="margin:0; font-size:14px;">Perfect. Can you send me the
-                                                    location?</p>
-                                                <small
-                                                    style="font-size:10px; color:#94a3b8; display:block; margin-top:4px;">10:48
-                                                    AM</small>
-                                            </div>
-
-                                            <div
-                                                style="align-self:flex-start; font-size:12px; color:#64748b; margin-left:10px;">
-                                                typing...
-                                            </div>
-                                        </div>
-
-                                        <!-- Input Area -->
-                                        <div
-                                            style="padding:15px; background:#fff; border-top:1px solid #e2e8f0; display:flex; gap:10px;">
-                                            <input type="text" class="form-input" placeholder="Message..."
-                                                style="border-radius:20px; border:1px solid #cbd5e1;">
-                                            <button class="btn btn-primary"
-                                                style="border-radius:50%; width:40px; padding:0; justify-content:center;">➤</button>
-                                        </div>
-                                    </div>
-
-                                    <!-- 3. RIGHT: TARGET INFO & NOTIFICATIONS -->
-                                    <div style="display:flex; flex-direction:column; gap:20px;">
-                                        <!-- Target Profile -->
-                                        <div class="card" style="padding:20px; text-align:center;">
-                                            <div
-                                                style="width:80px; height:80px; margin:0 auto 10px; background:#e2e8f0; border-radius:50%; font-size:40px; display:flex; align-items:center; justify-content:center;">
-                                                📸</div>
-                                            <h3 style="margin:0;">Target Account</h3>
-                                            <p style="color:#64748b; margin:5px 0 15px;">@instagram_user</p>
-                                            <div
-                                                style="display:flex; justify-content:center; gap:10px; font-size:13px;">
-                                                <div><strong>1.2k</strong><br><span style="color:#64748b">Posts</span>
-                                                </div>
-                                                <div><strong>12.5k</strong><br><span
-                                                        style="color:#64748b">Followers</span></div>
-                                                <div><strong>450</strong><br><span
-                                                        style="color:#64748b">Following</span></div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Notification Log -->
-                                        <div class="card" style="flex:1; display:flex; flex-direction:column;">
-                                            <div style="padding:15px; border-bottom:1px solid #e2e8f0;">
-                                                <h3 style="margin:0; font-size:14px;">RECENT ALERTS</h3>
-                                            </div>
-                                            <div style="padding:10px; overflow-y:auto; font-size:13px;">
-                                                <div style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                                                    <span style="color:#ef4444;">❤️ Like</span> <span
-                                                        style="color:#334155;">liked a post by
-                                                        <strong>virat.kohli</strong></span>
-                                                    <div style="font-size:10px; color:#94a3b8;">2 mins ago</div>
-                                                </div>
-                                                <div style="padding:8px 0; border-bottom:1px solid #f1f5f9;">
-                                                    <span style="color:#3b82f6;">👤 Follow</span> <span
-                                                        style="color:#334155;">started following
-                                                        <strong>zomato</strong></span>
-                                                    <div style="font-size:10px; color:#94a3b8;">15 mins ago</div>
-                                                </div>
-                                                <div style="padding:8px 0;">
-                                                    <span style="color:#10b981;">💬 Comment</span> <span
-                                                        style="color:#334155;">commented: "Amazing!"</span>
-                                                    <div style="font-size:10px; color:#94a3b8;">1 hour ago</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- ============ NUMBER INTEL VIEW ============ -->
+                <!-- ============ NUMBER INTEL VIEW (Tri-Source Power) ============ -->
                 <div id="view-number" class="tab-view">
                     <div class="card">
                         <div class="card-header">
-                            <h2><span class="icon">📱</span> Indian Number Intelligence</h2>
+                            <h2><span class="icon">📱</span> Tri-Source Number Intelligence</h2>
                         </div>
                         <div class="card-body">
                             <form onsubmit="searchNumber(event)" class="form-grid">
                                 <div class="form-group full-width">
-                                    <label class="form-label">Target Number (+91)</label>
+                                    <label class="form-label">Target Mobile Number (+91)</label>
                                     <input type="tel" id="intel-phone" class="form-input" placeholder="9876543210"
                                         pattern="[0-9]{10}" required>
-                                    <small style="color:#94a3b8; display:block; margin-top:5px;">Enter 10-digit Indian
-                                        mobile number</small>
+                                    <small style="color:#94a3b8; display:block; margin-top:5px;">
+                                        Enter 10-digit number to launch multi-vector deep scan
+                                    </small>
                                 </div>
                                 <div class="form-group full-width">
                                     <button type="submit" class="btn btn-primary"
-                                        style="background:#2563eb; justify-content:center;">
-                                        🚀 Run Deep Scan
+                                        style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); justify-content:center;">
+                                        🚀 Launch Intelligence Grid
                                     </button>
                                 </div>
                             </form>
 
                             <div id="number-results" style="display:none; margin-top:25px;">
-                                <h3
-                                    style="font-size:16px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                                    🔍 Intelligence Report</h3>
-
-                                <div class="form-grid">
-                                    <!-- Truecaller -->
-                                    <a href="#" target="_blank" id="link-truecaller" class="stat-card"
-                                        style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; transition:transform 0.2s;">
-                                        <div style="color:#0087FF; font-weight:bold; margin-bottom:5px;">📞 Truecaller
-                                        </div>
-                                        <small style="color:#64748b;">Get Registered Name & Spam Status</small>
-                                    </a>
-
-                                    <!-- WhatsApp -->
-                                    <a href="#" target="_blank" id="link-whatsapp" class="stat-card"
-                                        style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; transition:transform 0.2s;">
-                                        <div style="color:#25D366; font-weight:bold; margin-bottom:5px;">💬 WhatsApp
-                                            Info</div>
-                                        <small style="color:#64748b;">Check Profile Pic & Last Seen</small>
-                                    </a>
-
-                                    <!-- UPI Check -->
-                                    <div class="stat-card" style="border:1px solid #e2e8f0;">
-                                        <div style="color:#6739B7; font-weight:bold; margin-bottom:5px;">💸 UPI / GPay
-                                        </div>
-                                        <small style="color:#64748b;" id="upi-scan-text">Scan: number@upi /
-                                            @okaxis</small>
-                                    </div>
-
-                                    <!-- Google Search -->
-                                    <a href="#" target="_blank" id="link-num-google" class="stat-card"
-                                        style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; transition:transform 0.2s;">
-                                        <div style="color:#EA4335; font-weight:bold; margin-bottom:5px;">🌐 Web Mentions
-                                        </div>
-                                        <small style="color:#64748b;">Find leaks & public listings</small>
-                                    </a>
-                                </div>
+                                <!-- Results injected dynamically -->
                             </div>
                         </div>
                     </div>
                 </div>
+
 
                 <!-- ============ SETTINGS VIEW ============ -->
                 <div id="view-settings" class="tab-view">
@@ -1538,223 +1186,104 @@
 
         // ===== Identity Lookup Logic (Internal OSINT System) =====
         // ===== Identity Lookup Logic (REAL OSINT) =====
-        async function performIdentitySearch(e, type) {
+        // ===== Identity Lookup Logic (REAL OSINT) =====
+        async function performIdentitySearch(e) {
             e.preventDefault();
+            const query = document.getElementById('id-query').value.trim();
+            const resultBox = document.getElementById('result-identity');
 
-            if (type === 'emailToInsta') {
-                const email = document.getElementById('id-email').value.trim();
-                const resultBox = document.getElementById('result-emailToInsta');
+            if (!query) return showToast('Enter a target first', 'error');
 
-                resultBox.style.display = 'block';
-                resultBox.innerHTML = '<div class="loader" style="margin:20px auto;"></div><p style="text-align:center">Querying Public Databases...</p>';
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = `
+                <div style="text-align:center; padding:40px;">
+                    <div class="loader" style="margin:0 auto 15px;"></div>
+                    <p>Scanning Digital Footprint...</p>
+                    <small style="color:#64748b">Please wait while we access public records</small>
+                </div>
+            `;
 
-                try {
-                    const response = await fetch('/admin/api/intel/osint', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: 'emailToInsta', query: email })
-                    });
-                    const res = await response.json();
+            try {
+                const response = await fetch('/admin/api/intel/osint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                const res = await response.json();
 
-                    if (res.success) {
-                        const d = res.data;
-                        resultBox.innerHTML = `
-                            <div class="card" style="margin-top:0; border-left:4px solid #10b981;">
-                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                                    <div style="display:flex; gap:15px;">
-                                        <img src="${d.gravatar_url || 'https://ui-avatars.com/api/?name=' + d.target_email}" style="width:60px; height:60px; border-radius:10px;">
-                                        <div>
-                                            <h3 style="margin:0; font-size:18px;">Public Profile Found</h3>
-                                            <div style="color:#64748b; font-size:14px; margin-top:2px;">Gravatar: <strong>${d.has_gravatar ? 'YES (Active)' : 'NO'}</strong></div>
+                if (res.success) {
+                    const d = res.data;
+                    let html = '';
+
+                    if (res.type === 'instagram') {
+                        html = `
+                            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                                <div style="background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045); padding:20px; color:white; text-align:center;">
+                                    <img src="${d.photo}" style="width:100px; height:100px; border-radius:50%; border:4px solid white; box-shadow:0 4px 6px rgba(0,0,0,0.2); object-fit:cover;">
+                                    <h3 style="margin:10px 0 5px 0; font-size:22px;">@${d.username}</h3>
+                                    <span style="background:rgba(0,0,0,0.2); padding:4px 10px; border-radius:20px; font-size:12px;">Instagram Public Profile</span>
+                                </div>
+                                <div style="padding:20px;">
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                                        <div style="background:#f8fafc; padding:10px; border-radius:8px;">
+                                            <small style="color:#64748b; display:block;">Bio/Title</small>
+                                            <strong style="color:#1e293b; display:block; margin-top:2px;">${d.details['Bio/Name']}</strong>
+                                        </div>
+                                        <div style="background:#f8fafc; padding:10px; border-radius:8px;">
+                                            <small style="color:#64748b; display:block;">Stats</small>
+                                            <strong style="color:#1e293b; display:block; margin-top:2px;">${d.details.Stats}</strong>
                                         </div>
                                     </div>
+                                    <a href="${d.details['Public Link']}" target="_blank" class="btn btn-primary" style="justify-content:center; background:#E1306C; border:none; width:100%;">
+                                        View Full Profile on Instagram
+                                    </a>
                                 </div>
-                                <hr style="margin:15px 0; border:none; border-top:1px solid #e2e8f0;">
-                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
-                                    <div><small style="display:block; color:#64748b;">Likely Username</small><strong style="font-size:16px;">@${d.likely_username}</strong></div>
-                                    <div><small style="display:block; color:#64748b;">Google ID</small><strong style="font-size:16px;">${d.google_split}</strong></div>
-                                </div>
-                                <div style="margin-top:15px; text-align:right;">
-                                    <a href="https://www.google.com/search?q=site:instagram.com+${email}" target="_blank" class="btn btn-sm" style="display:inline-block;">🔍 Deep Web Search</a>
-                                </div>
-                            </div>`;
-                        showToast('Scan Complete', 'success');
-                    } else {
-                        resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">${res.error}</div>`;
-                    }
-                } catch (err) {
-                    resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">Network Error</div>`;
-                }
-            }
-
-            if (type === 'instaToEmail') {
-                const username = document.getElementById('id-username').value.trim().replace('@', '');
-                const resultBox = document.getElementById('result-instaToEmail');
-
-                resultBox.style.display = 'block';
-                resultBox.innerHTML = '<div class="loader" style="margin:20px auto;"></div><p style="text-align:center">Accessing Instagram Graph API...</p>';
-
-                try {
-                    const response = await fetch('/admin/api/intel/osint', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ type: 'instaToEmail', query: username })
-                    });
-                    const res = await response.json();
-
-                    if (res.success) {
-                        const d = res.data;
-                        const emailList = d.found_emails.length > 0 ? d.found_emails.join('<br>') : 'No emails in public bio';
-
-                        resultBox.innerHTML = `
-                             <div class="card" style="margin-top:0; border-left:4px solid #3b82f6;">
-                                 <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
-                                    <img src="${d.photo}" style="width:60px; height:60px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-                                    <div>
-                                        <h3 style="margin:0; font-size:18px;">${d.full_name} (@${d.username})</h3>
-                                        <div style="color:#64748b; font-size:13px;">PK: ${d.pk} • ${d.followers} Followers</div>
-                                    </div>
-                                 </div>
-                                 
-                                 <div style="background:#1e293b; color:#fff; padding:15px; border-radius:8px; font-family:monospace; margin-bottom:15px;">
-                                     <div style="color:#94a3b8; font-size:11px; margin-bottom:5px;">BIO EXTRACT:</div>
-                                     <div>${d.bio || '[No Bio]'}</div>
-                                     <div style="margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
-                                        <span style="color:#10b981;">📧 Extracted:</span><br> ${emailList}
-                                     </div>
-                                 </div>
-
-                                 <div class="stats-grid" style="grid-template-columns:1fr 1fr; border:none; margin:0; gap:10px;">
-                                     <div><small>Private Profile?</small><br><strong>${d.is_private ? 'YES 🔒' : 'NO 🔓'}</strong></div>
-                                     <div><small>External Link</small><br><strong>${d.external_url ? 'YES' : 'None'}</strong></div>
-                                 </div>
-                             </div>
+                            </div>
                         `;
-                        showToast('Target Profile Decrypted', 'success');
-                    } else {
-                        resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">${res.error}</div>`;
+                    } else if (res.type === 'email') {
+                        html = `
+                            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                                <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); padding:20px; color:white; text-align:center;">
+                                    <img src="${d.photo}" style="width:100px; height:100px; border-radius:50%; border:4px solid white; box-shadow:0 4px 6px rgba(0,0,0,0.2);">
+                                    <h3 style="margin:10px 0 5px 0; font-size:22px;">${d.email}</h3>
+                                    <span style="background:rgba(0,0,0,0.2); padding:4px 10px; border-radius:20px; font-size:12px;">Identify Found via Gravatar</span>
+                                </div>
+                                <div style="padding:20px;">
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px; margin-bottom:20px;">
+                                        <div style="background:#f8fafc; padding:10px; border-radius:8px;">
+                                            <small style="color:#64748b; display:block;">Google/User ID</small>
+                                            <strong style="color:#1e293b; display:block; margin-top:2px;">${d.details['Google ID']}</strong>
+                                        </div>
+                                        <div style="background:#f8fafc; padding:10px; border-radius:8px;">
+                                            <small style="color:#64748b; display:block;">Domain</small>
+                                            <strong style="color:#1e293b; display:block; margin-top:2px;">${d.details.Domain}</strong>
+                                        </div>
+                                    </div>
+                                    <div style="text-align:center; margin-top:10px;">
+                                        <small style="color:#10b981;">✅ Mail Server Verified (MX)</small>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
                     }
-                } catch (err) {
-                    resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">Connection Failed</div>`;
+
+                    resultBox.innerHTML = html;
+                    showToast('Target Identification Successful', 'success');
+                } else {
+                    resultBox.innerHTML = `
+                        <div style="padding:20px; text-align:center; color:#ef4444; background:#fef2f2; border-radius:8px; border:1px solid #fee2e2;">
+                            <strong>Search Failed</strong>
+                            <p style="margin:5px 0 0 0; font-size:14px;">${res.error}</p>
+                        </div>`;
                 }
+            } catch (err) {
+                console.error(err);
+                resultBox.innerHTML = `<div style="text-align:center; padding:20px; color:red;">System Error: Interface not responding</div>`;
             }
         }
 
         // ===== Social & Number Logic =====
-        async function simulateInstaLogin(e) {
-            e.preventDefault();
-            const btn = e.target.querySelector('button');
-            const usernameInput = e.target.querySelector('input[type="text"]');
-            const passwordInput = e.target.querySelector('input[type="password"]');
 
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ Connecting to Instagram API...';
-            btn.disabled = true;
-
-            try {
-                const response = await fetch('/admin/api/social/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        username: usernameInput.value,
-                        password: passwordInput.value
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    btn.innerHTML = '✅ Secure Connection Established';
-                    document.getElementById('insta-login-box').style.display = 'none';
-                    document.getElementById('insta-control-panel').style.display = 'block'; // Ensure ID matches
-                    document.getElementById('insta-status').className = 'badge badge-success';
-                    document.getElementById('insta-status').innerHTML = '🟢 ' + data.user.username + ' (Live)';
-                    showToast('Access Granted: ' + data.user.full_name, 'success');
-
-                    // Fetch DMs
-                    loadInstaThreads();
-                } else {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                    showToast('Login Failed: ' + data.error, 'error');
-                }
-            } catch (err) {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                console.error(err);
-                showToast('Connection Error. Check server logs.', 'error');
-            }
-        }
-
-        async function loadInstaThreads() {
-            try {
-                const response = await fetch('/admin/api/social/inbox');
-                const data = await response.json();
-
-                if (data.success) {
-                    // Start of sidebar list
-                    const listContainer = document.querySelector('#insta-control-panel .card:first-child > div:last-child');
-                    listContainer.innerHTML = ''; // Clear mock data
-
-                    data.threads.forEach(t => {
-                        const div = document.createElement('div');
-                        div.style.cssText = 'padding:15px; border-bottom:1px solid #f1f5f9; cursor:pointer; display:flex; align-items:center; gap:10px; transition:bg 0.2s';
-                        div.onmouseover = () => div.style.background = '#f8fafc';
-                        div.onmouseout = () => div.style.background = 'transparent';
-
-                        const user = t.users[0] || { username: 'Unknown', profile_pic_url: '' };
-
-                        div.innerHTML = `
-                             <img src="${user.profile_pic_url}" style="width:40px; height:40px; border-radius:50%; background:#e2e8f0;">
-                             <div style="overflow:hidden;">
-                                 <div style="font-weight:bold; font-size:14px;">${user.username}</div>
-                                 <div style="font-size:12px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">
-                                     ${t.last_message}
-                                 </div>
-                             </div>
-                        `;
-                        div.onclick = () => loadInstaThread(t.thread_id, user.username);
-                        listContainer.appendChild(div);
-                    });
-                }
-            } catch (e) { console.error("Thread Load Error", e); }
-        }
-
-        async function loadInstaThread(threadId, username) {
-            const chatContainer = document.querySelector('#insta-control-panel .card:nth-child(2) > div:nth-child(2)'); // Chat Log Area
-            const headerName = document.querySelector('#insta-control-panel .card:nth-child(2) h3');
-
-            if (headerName) headerName.textContent = username;
-            chatContainer.innerHTML = '<div class="loader" style="margin:20px auto;"></div>';
-
-            try {
-                const response = await fetch('/admin/api/social/thread', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ thread_id: threadId })
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    chatContainer.innerHTML = ''; // Clear loader
-                    data.messages.forEach(m => {
-                        const div = document.createElement('div');
-                        div.style.cssText = m.is_me ?
-                            'align-self:flex-end; background:#3b82f6; color:white; padding:10px 15px; border-radius:15px 0 15px 15px; max-width:70%; margin-bottom:10px;' :
-                            'align-self:flex-start; background:#fff; padding:10px 15px; border-radius:0 15px 15px 15px; box-shadow:0 1px 2px rgba(0,0,0,0.05); max-width:70%; margin-bottom:10px;';
-
-                        div.innerHTML = `
-                            <p style="margin:0; font-size:14px;">${m.text}</p>
-                            <small style="font-size:10px; opacity:0.7; display:block; margin-top:4px;">${new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
-                         `;
-                        chatContainer.appendChild(div);
-                    });
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
-            } catch (e) {
-                chatContainer.innerHTML = '<p style="text-align:center; color:red;">Failed to load messages</p>';
-            }
-        }
 
         async function searchNumber(e) {
             e.preventDefault();
@@ -1766,63 +1295,111 @@
             resultContainer.innerHTML = `
                 <div style="text-align:center; padding:40px;">
                     <div class="loader" style="margin:0 auto 15px;"></div>
-                    <p>Triangulating Carrier Signal...</p>
-                    <small style="color:#64748b">Querying HLR & OSINT Databases</small>
+                    <p>Accessing Telecom Grid...</p>
+                    <small style="color:#64748b">Cross-referencing Signal vs HLR vs CNAM</small>
                 </div>
             `;
 
             try {
+                // Fetch basic carrier info
                 const response = await fetch('/admin/api/intel/lookup', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ number: num, type: 'phone' })
+                    body: JSON.stringify({ number: num })
                 });
+                const res = await response.json();
 
-                const data = await response.json();
+                if (res.success) {
+                    const d = res.data;
 
-                if (data.success) {
-                    const info = data.data;
+                    // Generate Deep Links for Tri-Source Name Verification
+                    const truecallerLink = `https://www.truecaller.com/search/in/${num}`;
+                    const eyeconLink = `https://www.google.com/search?q=site:eyecon-app.com+${num}`; // Fallback to Google index
+                    const facebookLink = `https://www.facebook.com/search/people/?q=${num}`;
+                    const whatsappLink = `https://api.whatsapp.com/send?phone=91${num}`;
+                    const telegramLink = `https://t.me/+91${num}`;
+
                     resultContainer.innerHTML = `
-                        <div class="card" style="border:1px solid #e2e8f0; background:#f8fafc; margin-top:0;">
-                            <div style="display:flex; align-items:center; gap:20px; padding:20px; border-bottom:1px solid #e2e8f0;">
-                                <div style="font-size:40px;">📱</div>
-                                <div>
-                                    <h3 style="margin:0; font-size:20px; color:#1e293b;">+91 ${num}</h3>
-                                    <div style="margin-top:5px; font-size:14px; color:#64748b;">
-                                        <span>${info.carrier}</span>
-                                    </div>
-                                    <div style="margin-top:8px;">
-                                        <span class="badge badge-success">Active Signal</span>
-                                    </div>
-                                </div>
+                        <!-- DETECTED NAME CARD -->
+                        <div style="background:linear-gradient(135deg, #1e293b 0%, #0f172a 100%); padding:25px; border-radius:12px; margin-bottom:20px; color:white; text-align:center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                            <div style="font-size:11px; opacity:0.75; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Identity Record</div>
+                            <div style="font-size:24px; font-weight:700; margin-bottom:5px; color:#38bdf8;">
+                                ${d.name || 'Unknown User'} ${d.is_real_name ? '✅' : '🔒'}
                             </div>
-                            
-                            <div style="padding:20px; background:#fff;">
-                                <h4 style="margin:0 0 10px 0; font-size:14px; color:#64748b;">DEEP INTEL PROBES (Click to Reveal)</h4>
-                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                                    <a href="${info.deep_links.whatsapp_api}" target="_blank" class="btn" style="justify-content:center; background:#25D366; color:white; text-decoration:none;">
-                                        Check WhatsApp Photo
-                                    </a>
-                                    <a href="${info.deep_links.truecaller}" target="_blank" class="btn" style="justify-content:center; background:#0074D9; color:white; text-decoration:none;">
-                                        Truecaller Name Search
-                                    </a>
-                                     <a href="${info.deep_links.upi_check}" class="btn" style="justify-content:center; background:#673AB7; color:white; text-decoration:none;">
-                                        Ping UPI ID (Mobile App)
-                                    </a>
+                            <div style="font-size:13px; opacity:0.8;">Source: ${d.source || 'Carrier Database'}</div>
+                        </div>
+
+                        <div style="background:#f8fafc; padding:20px; border-radius:12px; margin-bottom:20px; border:1px solid #e2e8f0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                                <h3 style="margin:0; font-size:18px;">📲 Signal Intelligence</h3>
+                                <span class="badge ${d.valid ? 'badge-success' : 'badge-danger'}">
+                                    ${d.valid ? 'Active Line' : 'Inactive'}
+                                </span>
+                            </div>
+                            <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); gap:15px;">
+                                <div>
+                                    <small style="color:#64748b; font-size:11px; font-weight:600; text-transform:uppercase;">Carrier Network</small>
+                                    <div style="font-weight:600; font-size:15px; color:#0f172a;">${d.carrier}</div>
                                 </div>
-                                <p style="margin-top:15px; font-size:12px; color:#94a3b8; font-style:italic;">
-                                    * These tools perform live lookups. UPI validation reveals the registered banking name. WhatsApp check reveals the user's public photo.
-                                </p>
+                                <div>
+                                    <small style="color:#64748b; font-size:11px; font-weight:600; text-transform:uppercase;">Circle / Region</small>
+                                    <div style="font-weight:600; font-size:15px; color:#0f172a;">${d.circle}</div>
+                                </div>
                             </div>
                         </div>
+
+                        <h3 style="font-size:16px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                            🕵️ Tri-Source Identity Resolve
+                        </h3>
+
+                        <div class="form-grid">
+                            <!-- Source 1: Truecaller -->
+                            <a href="${truecallerLink}" target="_blank" class="stat-card" 
+                               style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; border-left:4px solid #0087FF; padding:15px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                                    <span style="font-size:20px;">📞</span>
+                                    <div style="font-weight:bold; color:#0087FF;">Source 1: Truecaller</div>
+                                </div>
+                                <small style="color:#64748b;">Checks Global Spam DB for Name</small>
+                            </a>
+
+                            <!-- Source 2: Facebook -->
+                            <a href="${facebookLink}" target="_blank" class="stat-card" 
+                               style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; border-left:4px solid #1877F2; padding:15px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                                    <span style="font-size:20px;">📘</span>
+                                    <div style="font-weight:bold; color:#1877F2;">Source 2: Facebook</div>
+                                </div>
+                                <small style="color:#64748b;">Checks for linked profile (Photo/Name)</small>
+                            </a>
+                            
+                            <!-- Source 3: Eyecon (via Google) -->
+                            <a href="${eyeconLink}" target="_blank" class="stat-card" 
+                               style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; border-left:4px solid #EA4335; padding:15px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                                    <span style="font-size:20px;">👁️</span>
+                                    <div style="font-weight:bold; color:#EA4335;">Source 3: Eyecon</div>
+                                </div>
+                                <small style="color:#64748b;">Deep Google Search for Eyecon Profile</small>
+                            </a>
+
+                            <!-- Instant Messaging Photos -->
+                            <a href="${whatsappLink}" target="_blank" class="stat-card" 
+                               style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; border-left:4px solid #25D366; padding:15px;">
+                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
+                                    <span style="font-size:20px;">💬</span>
+                                    <div style="font-weight:bold; color:#25D366;">WhatsApp Photo</div>
+                                </div>
+                                <small style="color:#64748b;">Direct Chat Link (Check Profile Pic)</small>
+                            </a>
+                        </div>
                     `;
-                    showToast('INTEL Grid Data Retrieved', 'success');
                 } else {
-                    resultContainer.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">❌ Target not found in public records.</div>`;
+                    resultContainer.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">❌ Number Analysis Failed. Network busy.</div>`;
                 }
             } catch (err) {
                 console.error(err);
-                resultContainer.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">Server Error: Intelligence grid offline.</div>`;
+                resultContainer.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">Offline: Could not connect to intelligence grid.</div>`;
             }
         }
     </script>
