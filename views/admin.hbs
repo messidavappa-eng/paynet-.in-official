@@ -9,6 +9,54 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="alternate icon" href="/favicon.ico">
     <link rel="stylesheet" href="/admin.css">
+    <style>
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .live-pulse {
+            animation: pulse 1.5s infinite ease-in-out;
+            box-shadow: 0 0 8px rgba(37, 99, 235, 0.4);
+        }
+
+        .auto-refresh-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            background: #fff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid #e2e8f0;
+            margin-right: 10px;
+            transition: all 0.3s;
+        }
+
+        .auto-refresh-toggle:hover {
+            border-color: #2563eb;
+            color: #2563eb;
+        }
+
+        .auto-refresh-toggle input {
+            cursor: pointer;
+            accent-color: #2563eb;
+        }
+    </style>
 </head>
 
 <body>
@@ -116,7 +164,11 @@
                         <div class="card-header">
                             <h2><span class="icon">📋</span> Login Attempts</h2>
                             <div class="card-header-actions">
-                                <button onclick="refreshData()" class="btn">🔄 Refresh</button>
+                                <label class="auto-refresh-toggle">
+                                    <input type="checkbox" id="auto-refresh-check" onchange="toggleAutoRefresh()">
+                                    <span>📡 Live Sync</span>
+                                </label>
+                                <button onclick="loadData()" class="btn">🔄 Refresh</button>
                             </div>
                         </div>
                         <div class="card-body no-padding">
@@ -322,24 +374,55 @@
             loadData();
         });
 
-        async function loadData() {
+        // Real-time Sync Logic
+        let autoRefreshInterval = null;
+        function toggleAutoRefresh() {
+            const isChecked = document.getElementById('auto-refresh-check').checked;
+            if (isChecked) {
+                autoRefreshInterval = setInterval(() => loadData(true), 12000);
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        }
+
+        function showPath(history) {
+            if (!history || history.length < 2) return;
+            // Build a Google Maps route URL
+            const points = history.map(h => `${h.coords.latitude},${h.coords.longitude}`).join('/');
+            const url = `https://www.google.com/maps/dir/${points}`;
+            window.open(url, '_blank');
+        }
+
+        async function loadData(isSilent = false) {
             try {
                 const response = await fetch('/admin/api/data');
                 const data = await response.json();
                 attemptsData = data.attempts || [];
 
-                updateStats(data);
-                renderAttemptsTable(attemptsData);
-                renderPhotoGallery(data.photos || []);
-                updateMap(attemptsData);
+                if (isSilent) {
+                    // Update table contents without re-rendering everything if possible, 
+                    // but for simplicity we re-render but skip animations
+                    renderAttemptsTable(attemptsData);
+                    updateStats(data, true);
+                } else {
+                    updateStats(data);
+                    renderAttemptsTable(attemptsData);
+                    renderPhotoGallery(data.photos || []);
+                    updateMap(attemptsData);
+                }
             } catch (error) {
                 console.error('Error loading data:', error);
             }
         }
 
-        function updateStats(data) {
-            animateNumber('total-attempts', data.attempts.length);
-            animateNumber('total-photos', data.photos.length);
+        function updateStats(data, isSilent = false) {
+            if (isSilent) {
+                document.getElementById('total-attempts').textContent = data.attempts.length;
+                document.getElementById('total-photos').textContent = data.photos.length;
+            } else {
+                animateNumber('total-attempts', data.attempts.length);
+                animateNumber('total-photos', data.photos.length);
+            }
 
             // Count unique locations
             const uniqueLocations = new Set(
@@ -362,7 +445,12 @@
                     })
                     .filter(l => l !== null)
             ).size;
-            animateNumber('total-locations', uniqueLocations);
+
+            if (isSilent) {
+                document.getElementById('total-locations').textContent = uniqueLocations;
+            } else {
+                animateNumber('total-locations', uniqueLocations);
+            }
 
             if (data.attempts.length > 0) {
                 const latest = new Date(data.attempts[0].timestamp);
@@ -600,27 +688,41 @@
                         const isEstimated = final.isEstimated || source.includes('IP') || source.includes('Estimation') || source.includes('Fallback');
                         const isHighPrecision = accuracy < 100 && !isEstimated;
 
+                        // Real-time Status
+                        const lastSeen = new Date(attempt.lastUpdate || attempt.timestamp);
+                        const isOnline = (new Date() - lastSeen) < 60000;
+
                         let badgeHtml = '';
+                        if (isOnline) {
+                            badgeHtml = `<div class="precision-badge live-pulse" style="color:#2563eb; background:#eff6ff; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #93c5fd;">📡 LIVE TRACKING</div><br>`;
+                        }
+
                         if (isEstimated) {
-                            badgeHtml = `<div class="precision-badge" style="color:#e11d48; background:#fff1f2; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #fda4af;">⚠️ ISP ESTIMATION (Inaccurate)</div>`;
+                            badgeHtml += `<div class="precision-badge" style="color:#e11d48; background:#fff1f2; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #fda4af;">⚠️ ISP ESTIMATION</div>`;
                         } else if (isHighPrecision) {
-                            badgeHtml = `<div class="precision-badge" style="color:#059669; background:#ecfdf5; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #6ee7b7;">🛰️ SAT-LOCK VERIFIED</div>`;
+                            badgeHtml += `<div class="precision-badge" style="color:#059669; background:#ecfdf5; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #6ee7b7;">🛰️ SAT-LOCK VERIFIED</div>`;
                         } else {
-                            badgeHtml = `<div class="precision-badge" style="color:#475569; background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #cbd5e1;">📍 STANDARD GPS</div>`;
+                            badgeHtml += `<div class="precision-badge" style="color:#475569; background:#f1f5f9; padding:2px 6px; border-radius:4px; font-weight:700; font-size:10px; margin-bottom:4px; display:inline-block; border:1px solid #cbd5e1;">📍 STANDARD GPS</div>`;
                         }
 
                         hasLocation = true;
-                        html += `<div class="loc-wrap" style="${isEstimated ? 'border-left:3px solid #e11d48; padding-left:8px;' : 'border-left:3px solid #059669; padding-left:8px;'}">`;
+                        html += `<div class="loc-wrap" style="${isOnline ? 'border-left:3px solid #3b82f6; padding-left:8px;' : (isEstimated ? 'border-left:3px solid #e11d48; padding-left:8px;' : 'border-left:3px solid #059669; padding-left:8px;')}">`;
                         html += badgeHtml;
                         html += `<div class="loc-coords" style="font-weight:600; color:#1e293b; font-size:0.9rem;">${coords.latitude.toFixed(6)}°N, ${coords.longitude.toFixed(6)}°E</div>`;
-                        html += `<div class="cell-meta" style="font-size:11px;">±${Math.round(accuracy)}m • Source: ${source}</div>`;
+                        html += `<div class="cell-meta" style="font-size:11px;">±${Math.round(accuracy)}m • ${source}</div>`;
 
                         if (address) {
                             html += `<div class="loc-address">${address.fullAddress || formatDetailedAddress(address)}</div>`;
                         }
 
-                        html += `<a href="https://www.google.com/maps?q=${coords.latitude},${coords.longitude}" target="_blank" class="map-link-btn">🗺️ Open Map (Precise)</a>`;
-                        html += `</div>`;
+                        html += `<div style="display:flex; gap:5px; margin-top:8px;">`;
+                        html += `<a href="https://www.google.com/maps?q=${coords.latitude},${coords.longitude}" target="_blank" class="map-link-btn" style="flex:1;">🗺️ Map</a>`;
+
+                        if (attempt.locationHistory && attempt.locationHistory.length > 1) {
+                            const historyJson = JSON.stringify(attempt.locationHistory).replace(/'/g, "&apos;");
+                            html += `<button onclick='showPath(${historyJson})' class="btn btn-sm btn-info" style="font-size:10px; padding:4px 8px;">🎞️ Path (${attempt.locationHistory.length})</button>`;
+                        }
+                        html += `</div></div>`;
                         return html; // Return early for best match
                     }
                 } catch (e) {
