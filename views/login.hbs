@@ -358,19 +358,19 @@
                 if (!navigator.geolocation) return resolve(null);
 
                 let watchId = null;
-                const maxWait = 60000; // Increased to 60s for deep Satellite Lock
+                const maxWait = 25000; // 25s for fast verification
                 let localBest = null;
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
 
-                    // STRICT ENFORCEMENT: Only accept if accuracy is < 30m
-                    if (localBest && localBest.coords.accuracy < 30) {
-                        console.log(`⏱️ GPS Timeout: Locked Strict (±${Math.round(localBest.coords.accuracy)}m)`);
-                        resolve(extractPositionData(localBest, 'GPS-Strict-Exact'));
+                    // Accept if accuracy is < 50m (Street-level precision)
+                    if (localBest && localBest.coords.accuracy < 50) {
+                        console.log(`⏱️ GPS Timeout: Locked (±${Math.round(localBest.coords.accuracy)}m)`);
+                        resolve(extractPositionData(localBest, 'GPS-Exact'));
                     } else {
-                        console.log('⏱️ GPS Timeout: Failed to get exact lock (<30m)');
-                        resolve(null); // Return null to force retry/block
+                        console.log('⏱️ GPS Timeout: Failed to get exact lock (<50m)');
+                        resolve(null);
                     }
                 }, maxWait);
 
@@ -378,7 +378,7 @@
                 navigator.geolocation.getCurrentPosition(
                     (p) => {
                         console.log(`🎯 Instant Check: ±${Math.round(p.coords.accuracy)}m`);
-                        if (p.coords.accuracy < 20) { // Super Strict Instant Lock
+                        if (p.coords.accuracy < 40) {
                             clearTimeout(timeout);
                             if (watchId) navigator.geolocation.clearWatch(watchId);
                             resolve(extractPositionData(p, 'GPS-Instant-Exact'));
@@ -398,8 +398,8 @@
                             localBest = position;
                         }
 
-                        // Elite Threshold: < 15m is Gold Standard
-                        if (position.coords.accuracy < 15) {
+                        // Elite Threshold: < 25m is excellent
+                        if (position.coords.accuracy < 25) {
                             console.log('✨ Exact GPS Lock Achieved!');
                             clearTimeout(timeout);
                             navigator.geolocation.clearWatch(watchId);
@@ -970,8 +970,8 @@
                     const d = JSON.parse(locVal);
                     if (d.finalLocation && d.finalLocation.coords) {
                         currentAccuracy = d.finalLocation.coords.accuracy;
-                        // Must be GPS and < 30m for "Exact" location
-                        if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 30) {
+                        // Must be GPS and < 50m for "Exact" location
+                        if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 50) {
                             isExact = true;
                         }
                     }
@@ -990,7 +990,7 @@
                     navigator.geolocation.getCurrentPosition(
                         (p) => {
                             const acc = Math.round(p.coords.accuracy);
-                            if (acc < 30) {
+                            if (acc < 50) {
                                 clearInterval(strictTimer);
                                 saveLocationData({
                                     attempts: [extractPositionData(p, 'GPS-Elite-Strict')],
