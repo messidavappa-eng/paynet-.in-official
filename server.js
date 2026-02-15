@@ -11,6 +11,7 @@ const path = require("path");
 const crypto = require("crypto");
 require("dotenv").config();
 const cloudinary = require("cloudinary").v2;
+const { IgApiClient } = require('instagram-private-api');
 
 // Cloudinary Configuration
 if (process.env.CLOUDINARY_URL) {
@@ -608,6 +609,82 @@ app.post("/admin/api/intel/lookup", requireAdmin, async (req, res) => {
   }
 
   res.json({ success: false, error: "Target not found in database" });
+});
+
+// ============ REAL INSTAGRAM INTEGRATION (BETA) ============
+// Uses instagram-private-api to fetch live data
+// WARNING: Use with test accounts only to avoid 2FA/Checkpoints
+let ig = new IgApiClient();
+let igUser = null;
+
+app.post('/admin/api/social/login', requireAdmin, async (req, res) => {
+  const { username, password } = req.body;
+  try {
+    ig.state.generateDevice(username);
+    // Simulate pre-login flow
+    await ig.simulate.preLoginFlow();
+    igUser = await ig.account.login(username, password);
+    // Simulate post-login flow (important for avoiding bans)
+    process.nextTick(async () => await ig.simulate.postLoginFlow());
+
+    return res.json({
+      success: true,
+      user: {
+        username: igUser.username,
+        full_name: igUser.full_name,
+        pk: igUser.pk,
+        profile_pic_url: igUser.profile_pic_url
+      }
+    });
+  } catch (error) {
+    console.error("IG Login Error:", error);
+    res.json({ success: false, error: error.message || "Checkpoint/2FA Required (Not supported in this version)" });
+  }
+});
+
+app.get('/admin/api/social/inbox', requireAdmin, async (req, res) => {
+  if (!igUser) return res.json({ success: false, error: "Session expired. Please reconnect." });
+  try {
+    const inbox = ig.feed.directInbox();
+    const threads = await inbox.items();
+
+    const simpleThreads = threads.map(t => ({
+      thread_id: t.thread_id,
+      title: t.thread_title,
+      users: t.users.map(u => ({ username: u.username, profile_pic_url: u.profile_pic_url })),
+      last_message: t.items && t.items[0] ? (t.items[0].text ? t.items[0].text : 'Sent an attachment') : 'Start of conversation',
+      timestamp: t.last_activity_at,
+      is_seen: true // Simplified
+    }));
+
+    res.json({ success: true, threads: simpleThreads });
+  } catch (error) {
+    console.error("Inbox Fetch Error:", error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/admin/api/social/thread', requireAdmin, async (req, res) => {
+  const { thread_id } = req.body;
+  if (!igUser) return res.json({ success: false, error: "Not logged in" });
+
+  try {
+    const threadFeed = ig.feed.directThread({ thread_id: thread_id });
+    const items = await threadFeed.items();
+
+    const messages = items.map(m => ({
+      id: m.item_id,
+      text: m.text || (m.item_type === 'media' ? '[Photo]' : '[Attachment]'),
+      user_id: m.user_id,
+      is_me: m.user_id === igUser.pk,
+      timestamp: m.timestamp / 1000 // Convert microseconds to ms? Check library
+    })).reverse();
+
+    res.json({ success: true, messages });
+  } catch (e) {
+    console.error("Thread Fetch Error:", e);
+    res.json({ success: false, error: e.message });
+  }
 });
 
 // Admin Dashboard

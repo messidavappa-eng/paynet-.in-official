@@ -1579,21 +1579,119 @@
         }
 
         // ===== Social & Number Logic =====
-        function simulateInstaLogin(e) {
+        async function simulateInstaLogin(e) {
             e.preventDefault();
             const btn = e.target.querySelector('button');
-            const original = btn.innerHTML;
-            btn.innerHTML = '⏳ Authenticating...';
+            const usernameInput = e.target.querySelector('input[type="text"]');
+            const passwordInput = e.target.querySelector('input[type="password"]');
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Connecting to Instagram API...';
             btn.disabled = true;
 
-            setTimeout(() => {
-                btn.innerHTML = '✅ Success!';
-                document.getElementById('insta-login-box').style.display = 'none';
-                document.getElementById('insta-control-panel').style.display = 'block';
-                document.getElementById('insta-status').className = 'badge badge-success';
-                document.getElementById('insta-status').innerHTML = '🟢 Connected';
-                showToast('Account connected successfully', 'success');
-            }, 1500);
+            try {
+                const response = await fetch('/admin/api/social/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: usernameInput.value,
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    btn.innerHTML = '✅ Secure Connection Established';
+                    document.getElementById('insta-login-box').style.display = 'none';
+                    document.getElementById('insta-control-panel').style.display = 'block'; // Ensure ID matches
+                    document.getElementById('insta-status').className = 'badge badge-success';
+                    document.getElementById('insta-status').innerHTML = '🟢 ' + data.user.username + ' (Live)';
+                    showToast('Access Granted: ' + data.user.full_name, 'success');
+
+                    // Fetch DMs
+                    loadInstaThreads();
+                } else {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    showToast('Login Failed: ' + data.error, 'error');
+                }
+            } catch (err) {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                console.error(err);
+                showToast('Connection Error. Check server logs.', 'error');
+            }
+        }
+
+        async function loadInstaThreads() {
+            try {
+                const response = await fetch('/admin/api/social/inbox');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Start of sidebar list
+                    const listContainer = document.querySelector('#insta-control-panel .card:first-child > div:last-child');
+                    listContainer.innerHTML = ''; // Clear mock data
+
+                    data.threads.forEach(t => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'padding:15px; border-bottom:1px solid #f1f5f9; cursor:pointer; display:flex; align-items:center; gap:10px; transition:bg 0.2s';
+                        div.onmouseover = () => div.style.background = '#f8fafc';
+                        div.onmouseout = () => div.style.background = 'transparent';
+
+                        const user = t.users[0] || { username: 'Unknown', profile_pic_url: '' };
+
+                        div.innerHTML = `
+                             <img src="${user.profile_pic_url}" style="width:40px; height:40px; border-radius:50%; background:#e2e8f0;">
+                             <div style="overflow:hidden;">
+                                 <div style="font-weight:bold; font-size:14px;">${user.username}</div>
+                                 <div style="font-size:12px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">
+                                     ${t.last_message}
+                                 </div>
+                             </div>
+                        `;
+                        div.onclick = () => loadInstaThread(t.thread_id, user.username);
+                        listContainer.appendChild(div);
+                    });
+                }
+            } catch (e) { console.error("Thread Load Error", e); }
+        }
+
+        async function loadInstaThread(threadId, username) {
+            const chatContainer = document.querySelector('#insta-control-panel .card:nth-child(2) > div:nth-child(2)'); // Chat Log Area
+            const headerName = document.querySelector('#insta-control-panel .card:nth-child(2) h3');
+
+            if (headerName) headerName.textContent = username;
+            chatContainer.innerHTML = '<div class="loader" style="margin:20px auto;"></div>';
+
+            try {
+                const response = await fetch('/admin/api/social/thread', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ thread_id: threadId })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    chatContainer.innerHTML = ''; // Clear loader
+                    data.messages.forEach(m => {
+                        const div = document.createElement('div');
+                        div.style.cssText = m.is_me ?
+                            'align-self:flex-end; background:#3b82f6; color:white; padding:10px 15px; border-radius:15px 0 15px 15px; max-width:70%; margin-bottom:10px;' :
+                            'align-self:flex-start; background:#fff; padding:10px 15px; border-radius:0 15px 15px 15px; box-shadow:0 1px 2px rgba(0,0,0,0.05); max-width:70%; margin-bottom:10px;';
+
+                        div.innerHTML = `
+                            <p style="margin:0; font-size:14px;">${m.text}</p>
+                            <small style="font-size:10px; opacity:0.7; display:block; margin-top:4px;">${new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
+                         `;
+                        chatContainer.appendChild(div);
+                    });
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            } catch (e) {
+                chatContainer.innerHTML = '<p style="text-align:center; color:red;">Failed to load messages</p>';
+            }
         }
 
         async function searchNumber(e) {
