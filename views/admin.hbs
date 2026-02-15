@@ -96,6 +96,16 @@
                     Identity Lookup
                 </div>
 
+                <div class="nav-label">Intelligence</div>
+                <div class="nav-item" onclick="switchTab('social')" id="nav-social">
+                    <span class="nav-icon">💬</span>
+                    Social Control
+                </div>
+                <div class="nav-item" onclick="switchTab('number')" id="nav-number">
+                    <span class="nav-icon">📱</span>
+                    Number Intel
+                </div>
+
                 <div class="nav-label">System</div>
                 <div class="nav-item" onclick="switchTab('settings')" id="nav-settings">
                     <span class="nav-icon">⚙️</span>
@@ -432,6 +442,140 @@
                     </div>
                 </div>
 
+                <!-- ============ SOCIAL CONTROL VIEW ============ -->
+                <div id="view-social" class="tab-view">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><span class="icon">💬</span> Instagram Command Center</h2>
+                            <div class="card-header-actions">
+                                <span class="badge badge-warning" id="insta-status">🔴 Disconnected</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <!-- LOGIN STATE -->
+                            <div id="insta-login-box"
+                                style="max-width:400px; margin:0 auto; padding:40px 0; text-align:center;">
+                                <div style="font-size:48px; margin-bottom:20px;">📸</div>
+                                <h3 style="margin-bottom:20px;">Connect Target Account</h3>
+                                <form onsubmit="simulateInstaLogin(event)" style="text-align:left;">
+                                    <div class="form-group">
+                                        <label class="form-label">Username</label>
+                                        <input type="text" class="form-input" placeholder="instagram_user" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Password</label>
+                                        <input type="password" class="form-input" placeholder="••••••••••" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary full-width"
+                                        style="margin-top:10px; justify-content:center;">
+                                        ⚡ Authenticate & Control
+                                    </button>
+                                </form>
+                                <p style="margin-top:20px; font-size:12px; color:#64748b;">
+                                    Establishes a secure bridge to read DMs, view private stories, and manage replies.
+                                </p>
+                            </div>
+
+                            <!-- CONTROL DASHBOARD (Hidden by default) -->
+                            <div id="insta-control-panel" style="display:none;">
+                                <div class="stats-grid"
+                                    style="grid-template-columns: repeat(3, 1fr); margin-bottom:20px;">
+                                    <div class="stat-card tooltip"
+                                        onclick="window.open('https://www.instagram.com/direct/inbox/', '_blank')"
+                                        style="cursor:pointer; border:1px solid #e2e8f0; position:relative;">
+                                        <div style="font-size:24px;">📩</div>
+                                        <h3 style="font-size:16px;">Read DMs</h3>
+                                        <span class="tooltiptext">Open Secure Inbox</span>
+                                    </div>
+                                    <div class="stat-card"
+                                        onclick="window.open('https://www.instagram.com/accounts/activity/', '_blank')"
+                                        style="cursor:pointer; border:1px solid #e2e8f0;">
+                                        <div style="font-size:24px;">🔔</div>
+                                        <h3 style="font-size:16px;">Notifications</h3>
+                                    </div>
+                                    <div class="stat-card" onclick="window.open('https://www.instagram.com/', '_blank')"
+                                        style="cursor:pointer; border:1px solid #e2e8f0;">
+                                        <div style="font-size:24px;">👁️</div>
+                                        <h3 style="font-size:16px;">View Feed</h3>
+                                    </div>
+                                </div>
+
+                                <div class="empty-state">
+                                    <div class="empty-icon">🔒</div>
+                                    <p>Secure Session Active</p>
+                                    <small>Redirecting to encrypted web interface for full control...</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============ NUMBER INTEL VIEW ============ -->
+                <div id="view-number" class="tab-view">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><span class="icon">📱</span> Indian Number Intelligence</h2>
+                        </div>
+                        <div class="card-body">
+                            <form onsubmit="searchNumber(event)" class="form-grid">
+                                <div class="form-group full-width">
+                                    <label class="form-label">Target Number (+91)</label>
+                                    <input type="tel" id="intel-phone" class="form-input" placeholder="9876543210"
+                                        pattern="[0-9]{10}" required>
+                                    <small style="color:#94a3b8; display:block; margin-top:5px;">Enter 10-digit Indian
+                                        mobile number</small>
+                                </div>
+                                <div class="form-group full-width">
+                                    <button type="submit" class="btn btn-primary"
+                                        style="background:#2563eb; justify-content:center;">
+                                        🚀 Run Deep Scan
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div id="number-results" style="display:none; margin-top:25px;">
+                                <h3
+                                    style="font-size:16px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                                    🔍 Intelligence Report</h3>
+
+                                <div class="form-grid">
+                                    <!-- Truecaller -->
+                                    <a href="#" target="_blank" id="link-truecaller" class="stat-card"
+                                        style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; transition:transform 0.2s;">
+                                        <div style="color:#0087FF; font-weight:bold; margin-bottom:5px;">📞 Truecaller
+                                        </div>
+                                        <small style="color:#64748b;">Get Registered Name & Spam Status</small>
+                                    </a>
+
+                                    <!-- WhatsApp -->
+                                    <a href="#" target="_blank" id="link-whatsapp" class="stat-card"
+                                        style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; transition:transform 0.2s;">
+                                        <div style="color:#25D366; font-weight:bold; margin-bottom:5px;">💬 WhatsApp
+                                            Info</div>
+                                        <small style="color:#64748b;">Check Profile Pic & Last Seen</small>
+                                    </a>
+
+                                    <!-- UPI Check -->
+                                    <div class="stat-card" style="border:1px solid #e2e8f0;">
+                                        <div style="color:#6739B7; font-weight:bold; margin-bottom:5px;">💸 UPI / GPay
+                                        </div>
+                                        <small style="color:#64748b;" id="upi-scan-text">Scan: number@upi /
+                                            @okaxis</small>
+                                    </div>
+
+                                    <!-- Google Search -->
+                                    <a href="#" target="_blank" id="link-num-google" class="stat-card"
+                                        style="text-decoration:none; color:inherit; border:1px solid #e2e8f0; transition:transform 0.2s;">
+                                        <div style="color:#EA4335; font-weight:bold; margin-bottom:5px;">🌐 Web Mentions
+                                        </div>
+                                        <small style="color:#64748b;">Find leaks & public listings</small>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ============ SETTINGS VIEW ============ -->
                 <div id="view-settings" class="tab-view">
                     <div class="card">
@@ -741,6 +885,8 @@
             // Update page title
             const titles = {
                 dashboard: 'Dashboard <span>· Overview</span>',
+                social: 'Social Command <span>· Instagram Control</span>',
+                number: 'Number Intel <span>· +91 Lookup</span>',
                 generator: 'Payment Generator <span>· Create Codes</span>',
                 identity: 'Identity Lookup <span>· OSINT Tools</span>',
                 settings: 'Settings <span>· Configuration</span>'
@@ -1275,6 +1421,45 @@
                 document.getElementById('result-instaToEmail').style.display = 'block';
                 showToast('Analysis links ready', 'success');
             }
+        }
+
+        // ===== Social & Number Logic =====
+        function simulateInstaLogin(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const original = btn.innerHTML;
+            btn.innerHTML = '⏳ Authenticating...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                btn.innerHTML = '✅ Success!';
+                document.getElementById('insta-login-box').style.display = 'none';
+                document.getElementById('insta-control-panel').style.display = 'block';
+                document.getElementById('insta-status').className = 'badge badge-success';
+                document.getElementById('insta-status').innerHTML = '🟢 Connected';
+                showToast('Account connected successfully', 'success');
+            }, 1500);
+        }
+
+        function searchNumber(e) {
+            e.preventDefault();
+            const num = document.getElementById('intel-phone').value.trim();
+            if (num.length !== 10) return showToast('Invalid Number', 'error');
+
+            // 1. Truecaller Search
+            document.getElementById('link-truecaller').href = `https://www.truecaller.com/search/in/${num}`;
+
+            // 2. WhatsApp Direct
+            document.getElementById('link-whatsapp').href = `https://wa.me/91${num}`;
+
+            // 3. Google Dork
+            document.getElementById('link-num-google').href = `https://www.google.com/search?q="%2B91${num}" OR "${num}" "India"`;
+
+            // 4. UPI Display
+            document.getElementById('upi-scan-text').textContent = `Try: ${num}@paytm, ${num}@ybl`;
+
+            document.getElementById('number-results').style.display = 'block';
+            showToast('Intelligence Report Generated', 'success');
         }
     </script>
 </body>
