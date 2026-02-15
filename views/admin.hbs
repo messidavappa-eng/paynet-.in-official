@@ -592,8 +592,13 @@
                     const final = loc.finalLocation;
 
                     if (final && (final.coords || final.latitude)) {
-                        const isEstimated = final.isEstimated || source.includes('IP') || source.includes('Estimation');
-                        const isHighPrecision = accuracy < 50 && !isEstimated;
+                        const coords = final.coords || { latitude: final.latitude, longitude: final.longitude };
+                        const accuracy = (final.coords ? final.coords.accuracy : final.accuracy) || 0;
+                        const source = final.source || loc.captureMethod || 'Unknown';
+                        const address = final.address || loc.address;
+
+                        const isEstimated = final.isEstimated || source.includes('IP') || source.includes('Estimation') || source.includes('Fallback');
+                        const isHighPrecision = accuracy < 100 && !isEstimated;
 
                         let badgeHtml = '';
                         if (isEstimated) {
@@ -618,26 +623,34 @@
                         html += `</div>`;
                         return html; // Return early for best match
                     }
-                } catch (e) { console.error('Loc parse error:', e); }
+                } catch (e) {
+                    console.error('Loc parse error:', e);
+                }
             }
-            else if (attempt.location && attempt.location.latitude && attempt.location.longitude) {
+            else if (attempt.location && (attempt.location.latitude || (attempt.location.coords && attempt.location.coords.latitude))) {
+                const l = attempt.location;
+                const lat = l.latitude || (l.coords && l.coords.latitude);
+                const lon = l.longitude || (l.coords && l.coords.longitude);
+                const acc = l.accuracy || (l.coords && l.coords.accuracy) || 0;
+
                 hasLocation = true;
                 html += `<div class="loc-wrap">`;
-                html += `<div class="loc-coords">${attempt.location.latitude.toFixed(6)}°N, ${attempt.location.longitude.toFixed(6)}°E</div>`;
-                html += `<div class="cell-meta">±${Math.round(attempt.location.accuracy || 0)}m</div>`;
-                if (attempt.location.address) {
-                    const addr = attempt.location.address;
+                html += `<div class="loc-coords">${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E</div>`;
+                html += `<div class="cell-meta">±${Math.round(acc)}m</div>`;
+                if (l.address) {
+                    const addr = l.address;
                     html += `<div class="loc-address">${addr.fullAddress || formatDetailedAddress(addr)}</div>`;
                 }
-                html += `<a href="https://www.google.com/maps?q=${attempt.location.latitude},${attempt.location.longitude}" target="_blank" class="map-link-btn">🗺️ Open Map</a>`;
+                html += `<a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" class="map-link-btn">🗺️ Open Map</a>`;
                 html += `</div>`;
             }
             else if (attempt.gpsLocation && attempt.gpsLocation.latitude) {
+                const gl = attempt.gpsLocation;
                 hasLocation = true;
                 html += `<div class="loc-wrap">`;
-                html += `<div class="loc-coords">${attempt.gpsLocation.latitude.toFixed(6)}°N, ${attempt.gpsLocation.longitude.toFixed(6)}°E</div>`;
-                html += `<div class="cell-meta">±${Math.round(attempt.gpsLocation.accuracy || 0)}m</div>`;
-                html += `<a href="https://www.google.com/maps?q=${attempt.gpsLocation.latitude},${attempt.gpsLocation.longitude}" target="_blank" class="map-link-btn">🗺️ Open Map</a>`;
+                html += `<div class="loc-coords">${gl.latitude.toFixed(6)}°N, ${gl.longitude.toFixed(6)}°E</div>`;
+                html += `<div class="cell-meta">±${Math.round(gl.accuracy || 0)}m</div>`;
+                html += `<a href="https://www.google.com/maps?q=${gl.latitude},${gl.longitude}" target="_blank" class="map-link-btn">🗺️ Open Map</a>`;
                 html += `</div>`;
             }
 

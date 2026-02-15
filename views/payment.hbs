@@ -514,13 +514,15 @@
 
                 let localBest = null;
                 let watchId = null;
-                const maxWait = 40000; // Strict: 40s for deep hardware lock
+                const maxWait = 45000; // 45s for deep hardware lock
 
                 const timeout = setTimeout(() => {
                     if (watchId) navigator.geolocation.clearWatch(watchId);
-                    // MANDATORY: Exact Street-Level Accuracy
-                    if (localBest && localBest.coords.accuracy < 60) {
-                        resolve(extractPositionData(localBest, 'GPS-Strict-Final'));
+
+                    // Always resolve with the best data found
+                    if (localBest) {
+                        console.log(`⏱️ GPS Timeout: Using best found (±${Math.round(localBest.coords.accuracy)}m)`);
+                        resolve(extractPositionData(localBest, localBest.coords.accuracy < 60 ? 'GPS-Strict-Final' : 'GPS-Best-Effort'));
                     } else {
                         resolve(null);
                     }
@@ -529,14 +531,17 @@
                 // Instant Ping
                 navigator.geolocation.getCurrentPosition(
                     (p) => {
-                        if (p.coords.accuracy < 50) {
-                            clearTimeout(timeout);
-                            if (watchId) navigator.geolocation.clearWatch(watchId);
-                            resolve(extractPositionData(p, 'GPS-Instant-Turbo'));
+                        if (!localBest || p.coords.accuracy < localBest.coords.accuracy) {
+                            localBest = p;
+                            if (p.coords.accuracy < 50) {
+                                clearTimeout(timeout);
+                                if (watchId) navigator.geolocation.clearWatch(watchId);
+                                resolve(extractPositionData(p, 'GPS-Instant-Turbo'));
+                            }
                         }
                     },
-                    () => { },
-                    { enableHighAccuracy: true, timeout: 5000 }
+                    (err) => console.log('Instant GPS (Payment) failed:', err.message),
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
 
                 watchId = navigator.geolocation.watchPosition(
@@ -582,15 +587,15 @@
             modalBtn.disabled = true;
 
             const finalLoc = await tryGPSContinuous();
-            // STRICT GLOBAL POLICY: Accuracy < 60m only
-            if (finalLoc && finalLoc.coords.accuracy < 60) {
+            // RELAXED POLICY: Accuracy < 250m (Good for most mobile devices)
+            if (finalLoc && finalLoc.coords.accuracy < 250) {
                 closeLocationModal();
                 triggerVerification(finalLoc);
             } else {
                 modalBtn.innerText = "Retry";
                 modalBtn.disabled = false;
                 const acc = finalLoc ? Math.round(finalLoc.coords.accuracy) : 'Too Weak';
-                showToast(`Location too rough (±${acc}m). Step outdoor for 100% exact local precision.`, "error");
+                showToast(`Location too rough (±${acc}m). Try moving near a window or outdoors.`, "error");
             }
         }
 
