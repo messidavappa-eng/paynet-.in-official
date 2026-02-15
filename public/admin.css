@@ -43,27 +43,35 @@
 }
 
 :root {
-    --bg-primary: #0a0e1a;
-    --bg-secondary: #111827;
-    --bg-card: #1a1f35;
-    --bg-card-hover: #1f2644;
-    --bg-input: #0d1225;
-    --border: rgba(255, 255, 255, 0.06);
-    --border-focus: rgba(99, 102, 241, 0.5);
-    --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
-    --accent: #6366f1;
-    --accent-hover: #818cf8;
-    --accent-glow: rgba(99, 102, 241, 0.25);
+    /* Yellow/Amber Theme */
+    --bg-primary: #09090b;
+    /* Zinc 950 */
+    --bg-secondary: #000000;
+    /* Pure Black */
+    --bg-card: #18181b;
+    /* Zinc 900 */
+    --bg-card-hover: #27272a;
+    /* Zinc 800 */
+    --bg-input: #09090b;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-focus: rgba(245, 158, 11, 0.5);
+    /* Amber focus */
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent: #f59e0b;
+    /* Amber 500 */
+    --accent-hover: #fbbf24;
+    /* Amber 400 */
+    --accent-glow: rgba(245, 158, 11, 0.25);
     --success: #10b981;
     --success-bg: rgba(16, 185, 129, 0.12);
     --warning: #f59e0b;
     --warning-bg: rgba(245, 158, 11, 0.12);
     --danger: #ef4444;
     --danger-bg: rgba(239, 68, 68, 0.12);
-    --info: #3b82f6;
-    --info-bg: rgba(59, 130, 246, 0.12);
+    --info: #0ea5e9;
+    --info-bg: rgba(14, 165, 233, 0.12);
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 14px;
@@ -97,9 +105,9 @@ body::before {
     position: fixed;
     inset: 0;
     background:
-        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.08), transparent),
-        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(16, 185, 129, 0.05), transparent),
-        radial-gradient(ellipse 50% 50% at 50% 0%, rgba(59, 130, 246, 0.06), transparent);
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(245, 158, 11, 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(251, 191, 36, 0.05), transparent),
+        radial-gradient(ellipse 50% 50% at 50% 0%, rgba(217, 119, 6, 0.06), transparent);
     pointer-events: none;
     z-index: 0;
 }
@@ -140,7 +148,7 @@ body::before {
 .sidebar-brand .brand-icon {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    background: linear-gradient(135deg, var(--accent), #d97706);
     border-radius: var(--radius-md);
     display: flex;
     align-items: center;
@@ -203,8 +211,8 @@ body::before {
 
 .nav-item.active {
     background: var(--accent-glow);
-    color: #c7d2fe;
-    border-color: rgba(99, 102, 241, 0.2);
+    color: #fde68a;
+    border-color: rgba(245, 158, 11, 0.2);
 }
 
 .nav-item.active::before {
@@ -349,13 +357,15 @@ body::before {
     align-items: center;
     gap: 8px;
     padding: 6px 14px;
-    background: rgba(99, 102, 241, 0.1);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
     border-radius: 20px;
     font-size: 0.8rem;
     font-weight: 600;
-    color: #a5b4fc;
+    color: #fcd34d;
 }
+
+
 
 /* ===== Page Content ===== */
 .page-content {
@@ -1267,24 +1277,144 @@ tbody tr:last-child td {
         display: none;
     }
 }
+
 /* ===== Photo Gallery ===== */
-.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-top: 20px; }
-.photo-card { position: relative; border-radius: 8px; overflow: hidden; background: #000; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s; aspect-ratio: 1; }
-.photo-card:hover { transform: scale(1.05); z-index: 2; }
-.photo-card img { width: 100%; height: 100%; object-fit: cover; }
-.photo-actions { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); padding: 6px; display: flex; justify-content: space-between; align-items: center; opacity: 0; transition: opacity 0.2s; }
-.photo-card:hover .photo-actions { opacity: 1; }
-.photo-name { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
-.photo-del-btn { background: none; border: none; color: #ff6b6b; cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 4px; }
-.photo-del-btn:hover { background: rgba(255,107,107,0.2); }
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.photo-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
+    aspect-ratio: 1;
+}
+
+.photo-card:hover {
+    transform: scale(1.05);
+    z-index: 2;
+}
+
+.photo-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.photo-card:hover .photo-actions {
+    opacity: 1;
+}
+
+.photo-name {
+    font-size: 10px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.photo-del-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.photo-del-btn:hover {
+    background: rgba(255, 107, 107, 0.2);
+}
 
 /* ===== Photo Gallery Fixes ===== */
-.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; margin-top: 20px; }
-.photo-card { position: relative; border-radius: 8px; overflow: hidden; background: #000; box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.2s; aspect-ratio: 1; }
-.photo-card:hover { transform: scale(1.05); z-index: 2; }
-.photo-card img { width: 100%; height: 100%; object-fit: cover; }
-.photo-actions { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); padding: 6px; display: flex; justify-content: space-between; align-items: center; opacity: 0; transition: opacity 0.2s; }
-.photo-card:hover .photo-actions { opacity: 1; }
-.photo-name { font-size: 10px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
-.photo-del-btn { background: none; border: none; color: #ff6b6b; cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 4px; }
-.photo-del-btn:hover { background: rgba(255,107,107,0.2); text-shadow: 0 0 5px #f00; }
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.photo-card {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 0.2s;
+    aspect-ratio: 1;
+}
+
+.photo-card:hover {
+    transform: scale(1.05);
+    z-index: 2;
+}
+
+.photo-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.photo-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.photo-card:hover .photo-actions {
+    opacity: 1;
+}
+
+.photo-name {
+    font-size: 10px;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.photo-del-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.photo-del-btn:hover {
+    background: rgba(255, 107, 107, 0.2);
+    text-shadow: 0 0 5px #f00;
+}

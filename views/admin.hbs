@@ -112,12 +112,7 @@
                 </div>
 
 
-                <div class="nav-label">Intelligence</div>
 
-                <div class="nav-item" onclick="switchTab('number')" id="nav-number">
-                    <span class="nav-icon">📱</span>
-                    Number Intel
-                </div>
 
                 <div class="nav-label">System</div>
                 <div class="nav-item" onclick="switchTab('settings')" id="nav-settings">
@@ -347,36 +342,7 @@
                     </div>
                 </div>
 
-                <!-- ============ NUMBER INTEL VIEW (Tri-Source Power) ============ -->
-                <div id="view-number" class="tab-view">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2><span class="icon">📱</span> Tri-Source Number Intelligence</h2>
-                        </div>
-                        <div class="card-body">
-                            <form onsubmit="searchNumber(event)" class="form-grid">
-                                <div class="form-group full-width">
-                                    <label class="form-label">Target Mobile Number (+91)</label>
-                                    <input type="tel" id="intel-phone" class="form-input" placeholder="9876543210"
-                                        pattern="[0-9]{10}" required>
-                                    <small style="color:#94a3b8; display:block; margin-top:5px;">
-                                        Enter 10-digit number to launch multi-vector deep scan
-                                    </small>
-                                </div>
-                                <div class="form-group full-width">
-                                    <button type="submit" class="btn btn-primary"
-                                        style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); justify-content:center;">
-                                        🚀 Launch Intelligence Grid
-                                    </button>
-                                </div>
-                            </form>
 
-                            <div id="number-results" style="display:none; margin-top:25px;">
-                                <!-- Results injected dynamically -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
 
                 <!-- ============ SETTINGS VIEW ============ -->
