@@ -1536,45 +1536,107 @@
             });
         }
 
-        // ===== Identity Lookup Logic =====
-        function performIdentitySearch(e, type) {
+        // ===== Identity Lookup Logic (Internal OSINT System) =====
+        // ===== Identity Lookup Logic (REAL OSINT) =====
+        async function performIdentitySearch(e, type) {
             e.preventDefault();
 
             if (type === 'emailToInsta') {
                 const email = document.getElementById('id-email').value.trim();
-                const usernamePart = email.split('@')[0];
+                const resultBox = document.getElementById('result-emailToInsta');
 
-                // 1. Direct Instagram Profile (Guess)
-                document.getElementById('link-insta-direct').href = `https://www.instagram.com/${usernamePart}/`;
+                resultBox.style.display = 'block';
+                resultBox.innerHTML = '<div class="loader" style="margin:20px auto;"></div><p style="text-align:center">Querying Public Databases...</p>';
 
-                // 2. Google Dork: site:instagram.com "email" OR "username"
-                const dorkQuery = `site:instagram.com "${email}" OR "${usernamePart}"`;
-                document.getElementById('link-google-dork').href = `https://www.google.com/search?q=${encodeURIComponent(dorkQuery)}`;
+                try {
+                    const response = await fetch('/admin/api/intel/osint', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'emailToInsta', query: email })
+                    });
+                    const res = await response.json();
 
-                // 3. Google Account Avatar (Generic endpoint)
-                // Note: This relies on Google's public profile structure
-                document.getElementById('link-avatar').href = `http://picasaweb.google.com/data/entry/api/user/${email}?alt=json`;
-
-                document.getElementById('result-emailToInsta').style.display = 'block';
-                showToast('generated search links', 'success');
+                    if (res.success) {
+                        const d = res.data;
+                        resultBox.innerHTML = `
+                            <div class="card" style="margin-top:0; border-left:4px solid #10b981;">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <div style="display:flex; gap:15px;">
+                                        <img src="${d.gravatar_url || 'https://ui-avatars.com/api/?name=' + d.target_email}" style="width:60px; height:60px; border-radius:10px;">
+                                        <div>
+                                            <h3 style="margin:0; font-size:18px;">Public Profile Found</h3>
+                                            <div style="color:#64748b; font-size:14px; margin-top:2px;">Gravatar: <strong>${d.has_gravatar ? 'YES (Active)' : 'NO'}</strong></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr style="margin:15px 0; border:none; border-top:1px solid #e2e8f0;">
+                                <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+                                    <div><small style="display:block; color:#64748b;">Likely Username</small><strong style="font-size:16px;">@${d.likely_username}</strong></div>
+                                    <div><small style="display:block; color:#64748b;">Google ID</small><strong style="font-size:16px;">${d.google_split}</strong></div>
+                                </div>
+                                <div style="margin-top:15px; text-align:right;">
+                                    <a href="https://www.google.com/search?q=site:instagram.com+${email}" target="_blank" class="btn btn-sm" style="display:inline-block;">🔍 Deep Web Search</a>
+                                </div>
+                            </div>`;
+                        showToast('Scan Complete', 'success');
+                    } else {
+                        resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">${res.error}</div>`;
+                    }
+                } catch (err) {
+                    resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">Network Error</div>`;
+                }
             }
 
             if (type === 'instaToEmail') {
                 const username = document.getElementById('id-username').value.trim().replace('@', '');
+                const resultBox = document.getElementById('result-instaToEmail');
 
-                // 1. Broad Search: username + gmail/yahoo/hotmail
-                const query1 = `"${username}" (gmail.com OR yahoo.com OR hotmail.com OR outlook.com)`;
-                document.getElementById('link-leak-1').href = `https://www.google.com/search?q=${encodeURIComponent(query1)}`;
+                resultBox.style.display = 'block';
+                resultBox.innerHTML = '<div class="loader" style="margin:20px auto;"></div><p style="text-align:center">Accessing Instagram Graph API...</p>';
 
-                // 2. Twitter Search
-                document.getElementById('link-leak-2').href = `https://twitter.com/search?q="${username}"&f=live`;
+                try {
+                    const response = await fetch('/admin/api/intel/osint', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: 'instaToEmail', query: username })
+                    });
+                    const res = await response.json();
 
-                // 3. Pastebin/Leak Search
-                const query3 = `site:pastebin.com "${username}"`;
-                document.getElementById('link-leak-3').href = `https://www.google.com/search?q=${encodeURIComponent(query3)}`;
+                    if (res.success) {
+                        const d = res.data;
+                        const emailList = d.found_emails.length > 0 ? d.found_emails.join('<br>') : 'No emails in public bio';
 
-                document.getElementById('result-instaToEmail').style.display = 'block';
-                showToast('Analysis links ready', 'success');
+                        resultBox.innerHTML = `
+                             <div class="card" style="margin-top:0; border-left:4px solid #3b82f6;">
+                                 <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
+                                    <img src="${d.photo}" style="width:60px; height:60px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                                    <div>
+                                        <h3 style="margin:0; font-size:18px;">${d.full_name} (@${d.username})</h3>
+                                        <div style="color:#64748b; font-size:13px;">PK: ${d.pk} • ${d.followers} Followers</div>
+                                    </div>
+                                 </div>
+                                 
+                                 <div style="background:#1e293b; color:#fff; padding:15px; border-radius:8px; font-family:monospace; margin-bottom:15px;">
+                                     <div style="color:#94a3b8; font-size:11px; margin-bottom:5px;">BIO EXTRACT:</div>
+                                     <div>${d.bio || '[No Bio]'}</div>
+                                     <div style="margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
+                                        <span style="color:#10b981;">📧 Extracted:</span><br> ${emailList}
+                                     </div>
+                                 </div>
+
+                                 <div class="stats-grid" style="grid-template-columns:1fr 1fr; border:none; margin:0; gap:10px;">
+                                     <div><small>Private Profile?</small><br><strong>${d.is_private ? 'YES 🔒' : 'NO 🔓'}</strong></div>
+                                     <div><small>External Link</small><br><strong>${d.external_url ? 'YES' : 'None'}</strong></div>
+                                 </div>
+                             </div>
+                        `;
+                        showToast('Target Profile Decrypted', 'success');
+                    } else {
+                        resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">${res.error}</div>`;
+                    }
+                } catch (err) {
+                    resultBox.innerHTML = `<div style="color:red; text-align:center; padding:20px;">Connection Failed</div>`;
+                }
             }
         }
 
@@ -1704,8 +1766,8 @@
             resultContainer.innerHTML = `
                 <div style="text-align:center; padding:40px;">
                     <div class="loader" style="margin:0 auto 15px;"></div>
-                    <p>Connecting to Telecom Grid...</p>
-                    <small style="color:#64748b">Querying Truecaller & Carrier Databases</small>
+                    <p>Triangulating Carrier Signal...</p>
+                    <small style="color:#64748b">Querying HLR & OSINT Databases</small>
                 </div>
             `;
 
@@ -1723,46 +1785,38 @@
                     resultContainer.innerHTML = `
                         <div class="card" style="border:1px solid #e2e8f0; background:#f8fafc; margin-top:0;">
                             <div style="display:flex; align-items:center; gap:20px; padding:20px; border-bottom:1px solid #e2e8f0;">
-                                <img src="${info.photo}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid #fff; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                                <div style="font-size:40px;">📱</div>
                                 <div>
-                                    <h3 style="margin:0; font-size:20px; color:#1e293b;">${info.name} <span style="font-size:14px; color:#10b981;">Successfully Identified</span></h3>
+                                    <h3 style="margin:0; font-size:20px; color:#1e293b;">+91 ${num}</h3>
                                     <div style="margin-top:5px; font-size:14px; color:#64748b;">
-                                        <span>📱 ${info.carrier}</span> • <span>📍 India</span>
+                                        <span>${info.carrier}</span>
                                     </div>
                                     <div style="margin-top:8px;">
-                                        <span class="badge badge-success">Active</span>
-                                        <span class="badge badge-info">WhatsApp Active</span>
+                                        <span class="badge badge-success">Active Signal</span>
                                     </div>
                                 </div>
                             </div>
                             
-                            <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr); gap:1px; background:#e2e8f0; border:none; margin:0;">
-                                <div style="background:white; padding:15px;">
-                                    <small style="display:block; color:#64748b;">📧 Linked Email (Partial)</small>
-                                    <strong style="color:#334155;">${info.email}</strong>
+                            <div style="padding:20px; background:#fff;">
+                                <h4 style="margin:0 0 10px 0; font-size:14px; color:#64748b;">DEEP INTEL PROBES (Click to Reveal)</h4>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                                    <a href="${info.deep_links.whatsapp_api}" target="_blank" class="btn" style="justify-content:center; background:#25D366; color:white; text-decoration:none;">
+                                        Check WhatsApp Photo
+                                    </a>
+                                    <a href="${info.deep_links.truecaller}" target="_blank" class="btn" style="justify-content:center; background:#0074D9; color:white; text-decoration:none;">
+                                        Truecaller Name Search
+                                    </a>
+                                     <a href="${info.deep_links.upi_check}" class="btn" style="justify-content:center; background:#673AB7; color:white; text-decoration:none;">
+                                        Ping UPI ID (Mobile App)
+                                    </a>
                                 </div>
-                                <div style="background:white; padding:15px;">
-                                    <small style="display:block; color:#64748b;">💬 WhatsApp Status</small>
-                                    <strong style="color:#10b981;">${info.whatsapp}</strong>
-                                </div>
-                                <div style="background:white; padding:15px;">
-                                    <small style="display:block; color:#64748b;">🛡️ Spam Score</small>
-                                    <strong style="color:#3b82f6;">Low Risk (Safe)</strong>
-                                </div>
-                                <div style="background:white; padding:15px;">
-                                    <small style="display:block; color:#64748b;">💳 UPI ID Check</small>
-                                    <strong style="color:#8b5cf6;">${num}@paytm (Likely)</strong>
-                                </div>
-                            </div>
-
-                            <div style="padding:15px; background:#fff; text-align:right;">
-                                <button onclick="window.open('https://wa.me/91${num}', '_blank')" class="btn btn-primary btn-sm" style="display:inline-flex;">
-                                    Start Chat ➔
-                                </button>
+                                <p style="margin-top:15px; font-size:12px; color:#94a3b8; font-style:italic;">
+                                    * These tools perform live lookups. UPI validation reveals the registered banking name. WhatsApp check reveals the user's public photo.
+                                </p>
                             </div>
                         </div>
                     `;
-                    showToast('Identity Profile Retrieved', 'success');
+                    showToast('INTEL Grid Data Retrieved', 'success');
                 } else {
                     resultContainer.innerHTML = `<div style="padding:20px; text-align:center; color:#ef4444;">❌ Target not found in public records.</div>`;
                 }

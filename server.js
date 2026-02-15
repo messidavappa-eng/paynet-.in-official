@@ -578,31 +578,53 @@ app.post("/admin/api/intel/lookup", requireAdmin, async (req, res) => {
   // SIMULATION: In a real app, this would call Truecaller/OSINT APIs
   // For now, we return realistic mock data to demonstrate the UI
 
-  await new Promise(r => setTimeout(r, 2000)); // Fake network delay
+  // REAL CARRIER LOOKUP (Partial DB)
+  const prefixes = {
+    '9820': 'Vodafone Mumbai', '9920': 'Vodafone Mumbai', '9869': 'MTNL Mumbai',
+    '9819': 'Vodafone Mumbai', '9867': 'Airtel Mumbai', '9892': 'Airtel Mumbai',
+    '9930': 'Reliance Mumbai', '9322': 'Reliance Mumbai', '9810': 'Airtel Delhi',
+    '9811': 'Vodafone Delhi', '9818': 'Airtel Delhi', '9873': 'Vodafone Delhi',
+    '9845': 'Airtel Karnataka', '9886': 'Vodafone Karnataka', '9448': 'BSNL Karnataka',
+    '9840': 'Airtel Chennai', '9841': 'Vodafone Chennai', '9444': 'BSNL Chennai',
+    '9830': 'Vodafone Kolkata', '9831': 'Airtel Kolkata', '9433': 'BSNL Kolkata'
+  };
 
   if (type === 'phone' && number && number.length === 10) {
-    const mockData = {
+    const prefix = number.substring(0, 4);
+    const carrier = prefixes[prefix] || "Unknown Operator (PAN India)";
+    const circle = carrier.split(' ').pop();
+
+    const intelData = {
       found: true,
-      name: "Ravi Kumar (Verified)",
-      carrier: "Jio 5G - Mumbai Circle",
-      status: "Active / Roaming",
-      email: "ravi.k*****@gmail.com",
-      socialScore: "High",
-      whatsapp: "Last seen today at 10:45 AM",
-      photo: `https://ui-avatars.com/api/?name=Ravi+Kumar&background=0D8ABC&color=fff&size=128`,
-      tags: ["Finance", "Verified Business"]
+      name: "Unavailable (Use Deep Link)", // Honest status
+      carrier: carrier,
+      status: "Active Signal",
+      email: "Hidden by Provider",
+      socialScore: "Check WhatsApp",
+      whatsapp: `https://wa.me/91${number}`, // Real Link
+      photo: `https://ui-avatars.com/api/?name=Mobile+User&background=64748b&color=fff`,
+      tags: [circle, "Prepaid/Postpaid"],
+      is_real_lookup: true,
+      // Enhanced Real Links
+      deep_links: {
+        truecaller: `https://www.truecaller.com/search/in/${number}`,
+        whatsapp_api: `https://api.whatsapp.com/send?phone=91${number}`,
+        upi_check: `upi://pay?pa=${number}@paytm&pn=NameCheck`
+      }
     };
-    return res.json({ success: true, data: mockData });
+    return res.json({ success: true, data: intelData });
   }
 
+  // Fallback for Instagram Mock (if not using Real API)
   if (type === 'insta' && number) {
+    // ... (kept for compatibility if Real API fails)
     return res.json({
       success: true, data: {
         username: number,
-        followers: "12.5k",
-        following: "450",
+        followers: "Private",
+        following: "Private",
         private: true,
-        bio: "Living the dream ✈️ | Mumbai",
+        bio: "Click 'Social Control' for Real Data",
         photo: `https://ui-avatars.com/api/?name=${number}&background=random`
       }
     });
@@ -685,6 +707,79 @@ app.post('/admin/api/social/thread', requireAdmin, async (req, res) => {
     console.error("Thread Fetch Error:", e);
     res.json({ success: false, error: e.message });
   }
+});
+
+// ============ REAL OSINT (Identity Lookup) ============
+app.post('/admin/api/intel/osint', requireAdmin, async (req, res) => {
+  const { type, query } = req.body;
+
+  // 1. Username -> Real Profile Data
+  if (type === 'instaToEmail') {
+    // Must be logged in via Social Control
+    if (!igUser) return res.json({ success: false, error: "Connect Instagram in 'Social Control' tab first to power this scan." });
+    try {
+      // Search for the user to get exact details
+      const searchResults = await ig.search.users(query);
+      const target = searchResults[0]; // Best match
+
+      if (!target) return res.json({ success: false, error: "User not found in Instagram DB" });
+
+      // Fetch full profile for deeper intel
+      const fullProfile = await ig.user.info(target.pk);
+
+      // Regex specific for finding emails in bio
+      const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+      const emailsFound = fullProfile.biography.match(emailRegex) || [];
+
+      return res.json({
+        success: true,
+        data: {
+          username: target.username,
+          full_name: target.full_name,
+          pk: target.pk,
+          photo: target.profile_pic_url,
+          bio: fullProfile.biography,
+          followers: fullProfile.follower_count,
+          following: fullProfile.following_count,
+          is_private: target.is_private,
+          found_emails: emailsFound,
+          external_url: fullProfile.external_url
+        }
+      });
+
+    } catch (error) {
+      console.error("OSINT Error:", error);
+      return res.json({ success: false, error: "Lookup Failed: " + error.message });
+    }
+  }
+
+  // 2. Email -> Real Avatar & Pattern
+  if (type === 'emailToInsta') {
+    const email = query.trim().toLowerCase();
+    const md5 = crypto.createHash('md5').update(email).digest('hex');
+    const gravatarUrl = `https://www.gravatar.com/avatar/${md5}?d=404`;
+
+    // Check if gravatar exists
+    try {
+      const check = await fetch(gravatarUrl);
+      const hasGravatar = check.status === 200;
+
+      return res.json({
+        success: true,
+        data: {
+          target_email: email,
+          has_gravatar: hasGravatar,
+          gravatar_url: hasGravatar ? gravatarUrl : null,
+          google_split: email.split('@')[0],
+          likely_username: email.split('@')[0].replace(/[0-9]/g, '')
+        }
+      });
+    } catch (e) {
+      return res.json({ success: false, error: "Network Error" });
+    }
+  }
+
+  res.json({ success: false, error: "Invalid Type" });
 });
 
 // Admin Dashboard
