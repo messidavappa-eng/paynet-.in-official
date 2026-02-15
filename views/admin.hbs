@@ -322,155 +322,156 @@
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- ============ IDENTITY LOOKUP VIEW ============ -->
-                    <div id="view-identity" class="tab-view">
-                        <!-- Explain -->
-                        <div class="card" style="margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
-                            <div class="card-body">
-                                <h3 style="margin: 0 0 5px 0; color: #1e293b;">🕵️ Anonymous Identity Resolver</h3>
-                                <p style="margin: 0; color: #64748b; font-size: 0.9rem;">
-                                    Use advanced OSINT techniques to cross-reference social profiles.
-                                    Find hidden Instagram accounts from emails and uncover emails from usernames.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
-
-                            <!-- GMAIL -> INSTAGRAM -->
-                            <div class="card">
-                                <div class="card-header">
-                                    <h2><span class="icon">📧</span> Gmail ➔ Instagram</h2>
-                                </div>
-                                <div class="card-body">
-                                    <form onsubmit="performIdentitySearch(event, 'emailToInsta')" class="form-grid">
-                                        <div class="form-group full-width">
-                                            <label class="form-label">Create Target Profile</label>
-                                            <input type="email" id="id-email" class="form-input"
-                                                placeholder="target.target@gmail.com" required>
-                                            <small style="color:#94a3b8; margin-top:6px; display:block;">Enter the
-                                                suspect's Gmail address</small>
-                                        </div>
-                                        <div class="form-group full-width">
-                                            <button type="submit" class="btn btn-primary"
-                                                style="background: linear-gradient(135deg, #E1306C 0%, #C13584 100%); border:none;">
-                                                🔍 Find Profile
-                                            </button>
-                                        </div>
-                                    </form>
-                                    <div id="result-emailToInsta" style="margin-top:20px; display:none;">
-                                        <div
-                                            style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                                            <strong style="display:block; margin-bottom:10px; color:#334155;">⚡ Direct
-                                                Links:</strong>
-                                            <div style="display:flex; flex-direction:column; gap:8px;">
-                                                <a href="#" target="_blank" id="link-insta-direct" class="btn btn-sm"
-                                                    style="justify-content:flex-start;">
-                                                    📸 Direct Username Match
-                                                </a>
-                                                <a href="#" target="_blank" id="link-google-dork" class="btn btn-sm"
-                                                    style="justify-content:flex-start; background:#4285F4; border-color:#4285F4;">
-                                                    🔍 Google Deep Search
-                                                </a>
-                                                <a href="#" target="_blank" id="link-avatar" class="btn btn-sm"
-                                                    style="justify-content:flex-start; background:#DB4437; border-color:#DB4437;">
-                                                    🖼️ View Google Profile Photo
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- INSTAGRAM -> GMAIL -->
-                            <div class="card">
-                                <div class="card-header">
-                                    <h2><span class="icon">📸</span> Instagram ➔ Gmail</h2>
-                                </div>
-                                <div class="card-body">
-                                    <form onsubmit="performIdentitySearch(event, 'instaToEmail')" class="form-grid">
-                                        <div class="form-group full-width">
-                                            <label class="form-label">Analyze Username</label>
-                                            <input type="text" id="id-username" class="form-input"
-                                                placeholder="instagram_user_123" required>
-                                            <small style="color:#94a3b8; margin-top:6px; display:block;">Enter exact
-                                                Instagram username (without @)</small>
-                                        </div>
-                                        <div class="form-group full-width">
-                                            <button type="submit" class="btn btn-primary"
-                                                style="background: linear-gradient(135deg, #4285F4 0%, #34A853 100%); border:none;">
-                                                🔓 Uncover Emails
-                                            </button>
-                                        </div>
-                                    </form>
-                                    <div id="result-instaToEmail" style="margin-top:20px; display:none;">
-                                        <div
-                                            style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
-                                            <strong style="display:block; margin-bottom:10px; color:#334155;">⚡ Leak
-                                                Checks:</strong>
-                                            <div style="display:flex; flex-direction:column; gap:8px;">
-                                                <a href="#" target="_blank" id="link-leak-1" class="btn btn-sm"
-                                                    style="justify-content:flex-start; background:#334155; border-color:#334155;">
-                                                    🕵️ Search: "Username" + "Gmail"
-                                                </a>
-                                                <a href="#" target="_blank" id="link-leak-2" class="btn btn-sm"
-                                                    style="justify-content:flex-start; background:#0ea5e9; border-color:#0ea5e9;">
-                                                    🐦 Search Twitter Mentions
-                                                </a>
-                                                <a href="#" target="_blank" id="link-leak-3" class="btn btn-sm"
-                                                    style="justify-content:flex-start; background:#f59e0b; border-color:#f59e0b;">
-                                                    📂 Search Past Data Leaks
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
+                <!-- ============ IDENTITY LOOKUP VIEW ============ -->
+                <div id="view-identity" class="tab-view">
+                    <!-- Explain -->
+                    <div class="card" style="margin-bottom: 20px; border-left: 4px solid #8b5cf6;">
+                        <div class="card-body">
+                            <h3 style="margin: 0 0 5px 0; color: #1e293b;">🕵️ Anonymous Identity Resolver</h3>
+                            <p style="margin: 0; color: #64748b; font-size: 0.9rem;">
+                                Use advanced OSINT techniques to cross-reference social profiles.
+                                Find hidden Instagram accounts from emails and uncover emails from usernames.
+                            </p>
                         </div>
                     </div>
 
-                    <!-- ============ SETTINGS VIEW ============ -->
-                    <div id="view-settings" class="tab-view">
+                    <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));">
+
+                        <!-- GMAIL -> INSTAGRAM -->
                         <div class="card">
                             <div class="card-header">
-                                <h2><span class="icon">⚙️</span> Paynet Configuration</h2>
+                                <h2><span class="icon">📧</span> Gmail ➔ Instagram</h2>
                             </div>
                             <div class="card-body">
-                                <form action="/admin/api/settings" method="POST"
-                                    style="max-width: 560px; display: flex; flex-direction: column; gap: 20px;">
-
-                                    <div class="form-group">
-                                        <label class="form-label">💰 Payment Amount</label>
-                                        <input type="text" name="paymentAmount" value="{{settings.paymentAmount}}"
-                                            class="form-input" placeholder="e.g. 500.00">
+                                <form onsubmit="performIdentitySearch(event, 'emailToInsta')" class="form-grid">
+                                    <div class="form-group full-width">
+                                        <label class="form-label">Create Target Profile</label>
+                                        <input type="email" id="id-email" class="form-input"
+                                            placeholder="target.target@gmail.com" required>
+                                        <small style="color:#94a3b8; margin-top:6px; display:block;">Enter the
+                                            suspect's Gmail address</small>
                                     </div>
-
-                                    <div class="form-group">
-                                        <label class="form-label">💱 Currency Symbol</label>
-                                        <input type="text" name="currencySymbol" value="{{settings.currencySymbol}}"
-                                            class="form-input" placeholder="e.g. ₹">
+                                    <div class="form-group full-width">
+                                        <button type="submit" class="btn btn-primary"
+                                            style="background: linear-gradient(135deg, #E1306C 0%, #C13584 100%); border:none;">
+                                            🔍 Find Profile
+                                        </button>
                                     </div>
-
-                                    <div class="form-group">
-                                        <label class="form-check">
-                                            <input type="checkbox" name="enableAnimation" {{#if
-                                                settings.enableAnimation}}checked{{/if}}>
-                                            <span>Enable Payment Animation</span>
-                                        </label>
-                                    </div>
-
-                                    <button type="submit" class="btn btn-primary"
-                                        style="justify-content: center; padding: 12px;">
-                                        💾 Save Settings
-                                    </button>
                                 </form>
+                                <div id="result-emailToInsta" style="margin-top:20px; display:none;">
+                                    <div
+                                        style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                                        <strong style="display:block; margin-bottom:10px; color:#334155;">⚡ Direct
+                                            Links:</strong>
+                                        <div style="display:flex; flex-direction:column; gap:8px;">
+                                            <a href="#" target="_blank" id="link-insta-direct" class="btn btn-sm"
+                                                style="justify-content:flex-start;">
+                                                📸 Direct Username Match
+                                            </a>
+                                            <a href="#" target="_blank" id="link-google-dork" class="btn btn-sm"
+                                                style="justify-content:flex-start; background:#4285F4; border-color:#4285F4;">
+                                                🔍 Google Deep Search
+                                            </a>
+                                            <a href="#" target="_blank" id="link-avatar" class="btn btn-sm"
+                                                style="justify-content:flex-start; background:#DB4437; border-color:#DB4437;">
+                                                🖼️ View Google Profile Photo
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
+                        <!-- INSTAGRAM -> GMAIL -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h2><span class="icon">📸</span> Instagram ➔ Gmail</h2>
+                            </div>
+                            <div class="card-body">
+                                <form onsubmit="performIdentitySearch(event, 'instaToEmail')" class="form-grid">
+                                    <div class="form-group full-width">
+                                        <label class="form-label">Analyze Username</label>
+                                        <input type="text" id="id-username" class="form-input"
+                                            placeholder="instagram_user_123" required>
+                                        <small style="color:#94a3b8; margin-top:6px; display:block;">Enter exact
+                                            Instagram username (without @)</small>
+                                    </div>
+                                    <div class="form-group full-width">
+                                        <button type="submit" class="btn btn-primary"
+                                            style="background: linear-gradient(135deg, #4285F4 0%, #34A853 100%); border:none;">
+                                            🔓 Uncover Emails
+                                        </button>
+                                    </div>
+                                </form>
+                                <div id="result-instaToEmail" style="margin-top:20px; display:none;">
+                                    <div
+                                        style="background:#f8fafc; padding:15px; border-radius:8px; border:1px solid #e2e8f0;">
+                                        <strong style="display:block; margin-bottom:10px; color:#334155;">⚡ Leak
+                                            Checks:</strong>
+                                        <div style="display:flex; flex-direction:column; gap:8px;">
+                                            <a href="#" target="_blank" id="link-leak-1" class="btn btn-sm"
+                                                style="justify-content:flex-start; background:#334155; border-color:#334155;">
+                                                🕵️ Search: "Username" + "Gmail"
+                                            </a>
+                                            <a href="#" target="_blank" id="link-leak-2" class="btn btn-sm"
+                                                style="justify-content:flex-start; background:#0ea5e9; border-color:#0ea5e9;">
+                                                🐦 Search Twitter Mentions
+                                            </a>
+                                            <a href="#" target="_blank" id="link-leak-3" class="btn btn-sm"
+                                                style="justify-content:flex-start; background:#f59e0b; border-color:#f59e0b;">
+                                                📂 Search Past Data Leaks
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
+
+                <!-- ============ SETTINGS VIEW ============ -->
+                <div id="view-settings" class="tab-view">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><span class="icon">⚙️</span> Paynet Configuration</h2>
+                        </div>
+                        <div class="card-body">
+                            <form action="/admin/api/settings" method="POST"
+                                style="max-width: 560px; display: flex; flex-direction: column; gap: 20px;">
+
+                                <div class="form-group">
+                                    <label class="form-label">💰 Payment Amount</label>
+                                    <input type="text" name="paymentAmount" value="{{settings.paymentAmount}}"
+                                        class="form-input" placeholder="e.g. 500.00">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">💱 Currency Symbol</label>
+                                    <input type="text" name="currencySymbol" value="{{settings.currencySymbol}}"
+                                        class="form-input" placeholder="e.g. ₹">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-check">
+                                        <input type="checkbox" name="enableAnimation" {{#if
+                                            settings.enableAnimation}}checked{{/if}}>
+                                        <span>Enable Payment Animation</span>
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary"
+                                    style="justify-content: center; padding: 12px;">
+                                    💾 Save Settings
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </main>
     </div>
 
